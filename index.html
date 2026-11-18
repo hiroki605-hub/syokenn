@@ -60,6 +60,7 @@ summary{cursor:pointer;padding:4px 0}.pv{margin-top:8px;font-size:14px;white-spa
 let S={key:'',model:'gemini-3.8-flash',mode:null,classes:[],cur:null,stu:null,tab:0,len:{ns:200,nt:100,os:250,yo:250}};
 const KEY='shoken_v1';
 try{const x=localStorage.getItem(KEY);if(x)S=Object.assign(S,JSON.parse(x))}catch(e){}
+S.mode='num';try{S.classes.forEach(c=>c.students.forEach(s=>{s.name=''}))}catch(e){}
 /* 一括貼り付けなどで混ざった長い・複数の語がつながった履歴は自動で消す */
 try{if(S.dl)['c','k','club','role'].forEach(k=>{if(Array.isArray(S.dl[k]))S.dl[k]=S.dl[k].filter(v=>typeof v==='string'&&v.length<=30&&!/[、，,：:\n]/.test(v))})}catch(e){}
 if(!S.model||/^gemini-(1\.5|2\.0|2\.5)-flash(-lite)?$/.test(S.model))S.model='gemini-3.8-flash';
@@ -93,8 +94,6 @@ function t1(){
  <div class="c"><h2>生徒の表示方法</h2>
   <label class="opt ${S.mode==='num'?'on':''}"><input type="radio" name="m" ${S.mode==='num'?'checked':''} onchange="setM('num')"> <b>出席番号だけ</b>（おすすめ）
    <div class="mu">氏名を入力しません。出力・CSVも番号のみ。個人情報の漏えいリスクが低く、貼り付け時は番号で照合します。</div></label>
-  <label class="opt ${S.mode==='name'?'on':''}"><input type="radio" name="m" ${S.mode==='name'?'checked':''} onchange="setM('name')"> <b>名前を入力する</b>
-   <div class="mu">氏名も出力に表示されます。</div></label>
   <div class="wn">⚠ 注意：所見文の作成時、入力した所見はAI（Google Gemini）に送信されます。氏名を入力するかどうかに関わらず、学校・教育委員会の情報管理ルールで外部AIの利用が許可されているか必ず確認してください。名前を入力する場合でも、所見本文に氏名・固有名詞（学校名など）は書かないでください。生成文は必ず担任が読んで確認・修正してから提出してください。データはこの端末のブラウザ内にのみ保存されます。</div>
   ${S.mode?'':'<div class="mu">※ どちらかを選ぶと次へ進めます</div>'}</div>
  <div class="c"><h2>文字数の目安</h2><div class="mu">AIが作る文章のおよその長さです（提出先の枠に合わせて変えてください）。ぴったりの字数にはならないので、実際の字数は③の確認画面で見て調整してください。</div><div class="r">
@@ -110,7 +109,7 @@ function t1(){
 function addC(){const n=$('cn').value.trim();if(!n)return;const c={id:uid(),name:n,students:[]};S.classes.push(c);S.cur=S.cur||c.id;save();draw()}
 function renC(id){const c=S.classes.find(x=>x.id===id);const n=prompt('新しいクラス名',c.name);if(n){c.name=n;save();draw()}}
 function delC(id){if(!confirm('このクラスと生徒を削除しますか？'))return;S.classes=S.classes.filter(c=>c.id!==id);if(S.cur===id){S.cur=S.classes[0]?.id||null;S.stu=null}save();draw()}
-function setM(m){S.mode=m;save();draw()}
+function setM(m){S.mode='num';save();draw()}
 
 /* ===== 奈良県調査書：特別活動／スポーツ・文化活動等（選択式） ===== */
 const CT={eiken:{n:'英検',org:'日本英語検定協会',nm:'実用英語技能検定',lv:['5級','4級','3級','準2級','2級','準1級','1級']},
@@ -367,7 +366,7 @@ function fbLoad(){if(fbR)return fbR;fbR=(async()=>{if(!fbCfg())throw new Error('
 function fbBadge(m){let e=$('fbb');if(!e){e=document.createElement('div');e.id='fbb';e.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:3px 10px;font-size:12px;box-shadow:0 1px 6px rgba(0,0,0,.15)';document.body.appendChild(e)}
  e.textContent=m;e.style.display=m?'':'none';const k=$('fbm');if(k)k.textContent=m}
 function fbErr(e){const c=e&&e.code||'';fbBadge('🔴 共有エラー');
- alert(c==='permission-denied'?'権限がありません。Firebase側の「ルール」に、あなたのGoogleアカウントのメールが登録されているか確認してください。':c==='auth/popup-closed-by-user'?'ログインが閉じられました。':c==='auth/unauthorized-domain'?'このURLがFirebaseの「承認済みドメイン」に入っていません（Authentication→設定）。':'共有でエラーが出ました：'+(e&&e.message||e))}
+ alert(c==='permission-denied'?'権限がありません。Firebase側の「ルール」が古いままか、Authenticationで「匿名」が有効になっていない可能性があります。':c==='auth/operation-not-allowed'?'FirebaseのAuthenticationで「匿名」ログインを有効にしてください。':c==='auth/popup-closed-by-user'?'ログインが閉じられました。':c==='auth/unauthorized-domain'?'このURLがFirebaseの「承認済みドメイン」に入っていません（Authentication→設定）。':'共有でエラーが出ました：'+(e&&e.message||e))}
 const lsSave=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const fbEditing=()=>{const e=document.activeElement;return !!(e&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName))};
 function fbRefresh(){if(fbEditing()){fbDirty=true;return}clearTimeout(fbRT);fbRT=setTimeout(()=>{lsSave();draw()},150)}
@@ -378,8 +377,8 @@ async function fbStart(interactive){
  try{const t=(S.team||'').trim();if(!t){if(interactive)alert('先に「共有コード」を入れてください（同じチームの先生と同じ文字列）');return}
   fbBadge('接続中…');const f=await fbLoad(),a=f.auth();
   let u=await new Promise(r=>{const un=a.onAuthStateChanged(x=>{un();r(x)})});
-  if(!u){if(!interactive){fbBadge('⚪ 共有オフ（「共有を始める」でログイン）');return}u=(await a.signInWithPopup(new f.auth.GoogleAuthProvider())).user}
-  fbMe=u.email||'';fbLive=true;fbFirst=false;fbSync={};fbSM={};fbCloud={};fbReady={};fbSub={};localStorage.setItem('shoken_fbon','1');
+  if(!u){u=(await a.signInAnonymously()).user}
+  fbMe=u.email||'ゲスト';fbLive=true;fbFirst=false;fbSync={};fbSM={};fbCloud={};fbReady={};fbSub={};localStorage.setItem('shoken_fbon','1');
   const col=fbCol();
   fbUnsub.push(col.onSnapshot(qs=>{
    qs.docChanges().forEach(ch=>{if(ch.type==='removed')return;const id=ch.doc.id,x=ch.doc.data();fbCloud[id]=true;fbApplyClass(id,x);if(!fbSub[id])fbWatch(id)});
@@ -398,7 +397,7 @@ function fbWatch(id){fbSub[id]=true;
   qs.docChanges().forEach(d=>{const sid=d.doc.id;
    if(d.type==='removed'){delete ss[sid];const i=c.students.findIndex(s=>s.id===sid);if(i>=0){c.students.splice(i,1);ch=true}return}
    const x=d.doc.data();if(ss[sid]===x.json)return;let st;try{st=JSON.parse(x.json)}catch(e){return}
-   ss[sid]=x.json;const i=c.students.findIndex(s=>s.id===sid);
+   st.name='';ss[sid]=x.json;const i=c.students.findIndex(s=>s.id===sid);
    if(i>=0){if(JSON.stringify(c.students[i])===x.json)return;c.students[i]=st}else c.students.push(st);ch=true});
   c.students.sort((a,b)=>(+a.no||0)-(+b.no||0));
   const first=!fbReady[id];fbReady[id]=true;
@@ -420,7 +419,7 @@ function fbCard(){const c=fbCfg();
  const head='<div class="c"><h2>先生どうしでリアルタイム共有（Firebase）</h2><div class="wn">⚠ 共有をオンにすると、入力した所見などのデータがGoogleのサーバー（Firebase）に保存され、同じ共有コードの先生と常に同期されます。学校・教育委員会の情報管理ルールで許可されているか確認し、氏名は入れず番号だけの運用にしてください。APIキーは共有されません。</div>';
  if(!c)return head+'<div class="mu" style="margin-top:6px">Firebaseコンソールの「プロジェクトの設定」→「マイアプリ」にある <b>firebaseConfig</b> の中身を貼り付けてください。</div><textarea id="fbcfg" placeholder=\'apiKey: "...", authDomain: "...", projectId: "...", ...\' style="min-height:80px"></textarea><div class="r"><button class="p" onclick="fbSaveCfg()">設定を保存</button></div></div>';
  return head+`<div class="r" style="margin-top:6px"><b>共有コード</b><input value="${esc(S.team||'')}" placeholder="例：2026-3nen（同じチームで同じ文字列）" style="width:260px" onchange="S.team=this.value.trim();save()" ${fbLive?'disabled':''}>
- ${fbLive?'<button class="d" onclick="fbStop();draw()">共有を止める</button>':'<button class="p" onclick="fbStart(true)">共有を始める（Googleログイン）</button>'}</div>
+ ${fbLive?'<button class="d" onclick="fbStop();draw()">共有を止める</button>':'<button class="p" onclick="fbStart(true)">共有を始める</button>'}</div>
  <div class="mu" id="fbm">${fbLive?'🟢 共有中':'共有はオフです。'}</div><div class="mu">共有中は、クラス・生徒の入力（所見・委員会・部活動・AIの文章など）が自動で全員に反映されます。同じ生徒を同時に編集すると、あとから保存した内容になります。クラスの削除はクラウドには反映されません（生徒の削除は反映されます）。</div></div>`}
 setTimeout(()=>{if(localStorage.getItem('shoken_fbon')==='1'&&fbCfg()&&(S.team||'').trim())fbStart(false)},0);
 /* AI */
