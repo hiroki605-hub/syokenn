@@ -63,7 +63,7 @@ try{const x=localStorage.getItem(KEY);if(x)S=Object.assign(S,JSON.parse(x))}catc
 /* 一括貼り付けなどで混ざった長い・複数の語がつながった履歴は自動で消す */
 try{if(S.dl)['c','k','club','role'].forEach(k=>{if(Array.isArray(S.dl[k]))S.dl[k]=S.dl[k].filter(v=>typeof v==='string'&&v.length<=30&&!/[、，,：:\n]/.test(v))})}catch(e){}
 if(!S.model||/^gemini-(1\.5|2\.0|2\.5)-flash(-lite)?$/.test(S.model))S.model='gemini-3.8-flash';
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(window.fbLive)fbPushSoon()};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
@@ -103,7 +103,9 @@ function t1(){
   大阪<input type="number" style="width:80px" value="${S.len.os}" onchange="S.len.os=+this.value;save()">
   指導要録<input type="number" style="width:80px" value="${S.len.yo}" onchange="S.len.yo=+this.value;save()"></div></div>
  <div class="r"><button class="p big" onclick="go(1)" ${S.mode&&S.classes.length?'':'disabled'}>次へ：② 所見を入れる ▶</button></div>
- <div class="mu">データ全消去（クラス・生徒・所見・文章・出席日数をすべて消します。APIキーは残ります。先にExcelで保存してください）：<button class="d" onclick="if(confirm('すべてのデータを消します。よろしいですか？')){S={key:S.key,model:S.model,mode:null,classes:[],cur:null,stu:null,tab:0,len:S.len,dl:S.dl};save();draw()}">全データ削除</button></div>`;
+ <div class="mu">データ全消去（クラス・生徒・所見・文章・出席日数をすべて消します。APIキーは残ります。先にExcelで保存してください）：<button class="d" onclick="if(confirm('すべてのデータを消します。よろしいですか？')){S={key:S.key,model:S.model,mode:null,classes:[],cur:null,stu:null,tab:0,len:S.len,dl:S.dl};save();draw()}">全データ削除</button></div>
+ <div class="c"><h2>データの引っ越し・バックアップ</h2><div class="mu">入力したデータは、このブラウザの中にだけ保存されています。別のパソコンやURLへ移すとき、念のための控えにも使えます。ファイルには生徒の所見が入るので、取り扱いに注意してください（APIキーは含みません）。</div><div class="r"><button class="p" onclick="bkExport()">データを書き出す（ファイル保存）</button><label class="mu" style="cursor:pointer">ファイルから読み込む：<input type="file" accept=".json,application/json" onchange="bkImport(this)"></label></div></div>
+ ${fbCard()}`;
 }
 function addC(){const n=$('cn').value.trim();if(!n)return;const c={id:uid(),name:n,students:[]};S.classes.push(c);S.cur=S.cur||c.id;save();draw()}
 function renC(id){const c=S.classes.find(x=>x.id===id);const n=prompt('新しいクラス名',c.name);if(n){c.name=n;save();draw()}}
@@ -345,6 +347,82 @@ function bkApply(p){
  save();draw();
  alert(`${tg.length}人分の「${nm}」を入力しました（${tg[0]?lab(tg[0]):''}〜${tg.length?lab(tg[tg.length-1]):''}）。`);
 }
+function bkExport(){const o=Object.assign({},S);delete o.key;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));a.download='shoken-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove()}
+function bkImport(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.classes))throw 0;
+  if(!confirm('いまの内容を、このファイルの内容に置き換えます。よろしいですか？'))return;
+  S=Object.assign(S,o);save();draw();alert('読み込みました（クラス'+o.classes.length+'件）')}catch(e){alert('このファイルは読み込めません')}inp.value=''};
+ r.readAsText(f)}
+/* ---- Firebaseでリアルタイム共有（生徒1人ずつ同期。入力すると同じ共有コードの先生の画面にも反映） ---- */
+const FB_CFG={apiKey:"AIzaSyBuKa60R2jt7eeb5NNTrm5-k4ZlO8WjKG4",authDomain:"syokenn-5717a.firebaseapp.com",projectId:"syokenn-5717a",storageBucket:"syokenn-5717a.firebasestorage.app",messagingSenderId:"450838219267",appId:"1:450838219267:web:3442b42fb2623a91661c36"}; /* ← firebaseConfigを {apiKey:"...",...} の形でここに入れると、全員の設定入力が不要になります */
+var fbLive=false,fbFirst=false,fbMe='',fbR=null,fbSync={},fbSM={},fbCloud={},fbReady={},fbSub={},fbUnsub=[],fbTimer=null,fbRT=null,fbDirty=false,fbBusy=false,fbAgain=false;
+function fbCfg(){if(FB_CFG)return FB_CFG;try{return JSON.parse(localStorage.getItem('shoken_fb')||'null')}catch(e){return null}}
+function fbSaveCfg(){const t=$('fbcfg').value,o={};t.replace(/(\w+)\s*:\s*["']([^"']+)["']/g,(m,k,v)=>{o[k]=v});
+ if(!o.apiKey||!o.projectId){alert('読み取れません。Firebaseの「firebaseConfig = { ... }」の中身を、そのまま貼ってください');return}
+ localStorage.setItem('shoken_fb',JSON.stringify(o));draw()}
+function fbClearCfg(){if(confirm('Firebaseの設定をこのブラウザから消します。共有も止まります。よろしいですか？')){fbStop();localStorage.removeItem('shoken_fb');fbR=null;draw()}}
+function fbLoad(){if(fbR)return fbR;fbR=(async()=>{if(!fbCfg())throw new Error('Firebaseの設定がありません');
+ for(const u of ['app','auth','firestore'])await new Promise((ok,ng)=>{const e=document.createElement('script');e.src='https://www.gstatic.com/firebasejs/10.12.2/firebase-'+u+'-compat.js';e.onload=ok;e.onerror=()=>ng(new Error('Firebaseを読み込めません（通信を確認してください）'));document.head.appendChild(e)});
+ if(!firebase.apps.length)firebase.initializeApp(fbCfg());return firebase})();fbR.catch(()=>{fbR=null});return fbR}
+function fbBadge(m){let e=$('fbb');if(!e){e=document.createElement('div');e.id='fbb';e.style.cssText='position:fixed;left:8px;bottom:8px;z-index:9998;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:3px 10px;font-size:12px;box-shadow:0 1px 6px rgba(0,0,0,.15)';document.body.appendChild(e)}
+ e.textContent=m;e.style.display=m?'':'none';const k=$('fbm');if(k)k.textContent=m}
+function fbErr(e){const c=e&&e.code||'';fbBadge('🔴 共有エラー');
+ alert(c==='permission-denied'?'権限がありません。Firebase側の「ルール」に、あなたのGoogleアカウントのメールが登録されているか確認してください。':c==='auth/popup-closed-by-user'?'ログインが閉じられました。':c==='auth/unauthorized-domain'?'このURLがFirebaseの「承認済みドメイン」に入っていません（Authentication→設定）。':'共有でエラーが出ました：'+(e&&e.message||e))}
+const lsSave=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const fbEditing=()=>{const e=document.activeElement;return !!(e&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName))};
+function fbRefresh(){if(fbEditing()){fbDirty=true;return}clearTimeout(fbRT);fbRT=setTimeout(()=>{lsSave();draw()},150)}
+document.addEventListener('focusout',()=>{if(fbDirty){setTimeout(()=>{if(!fbEditing()){fbDirty=false;lsSave();draw()}},250)}});
+function fbCol(){const t=(S.team||'').trim();return t?firebase.firestore().collection('teams').doc(t).collection('classes'):null}
+async function fbStart(interactive){
+ if(fbLive)return;
+ try{const t=(S.team||'').trim();if(!t){if(interactive)alert('先に「共有コード」を入れてください（同じチームの先生と同じ文字列）');return}
+  fbBadge('接続中…');const f=await fbLoad(),a=f.auth();
+  let u=await new Promise(r=>{const un=a.onAuthStateChanged(x=>{un();r(x)})});
+  if(!u){if(!interactive){fbBadge('⚪ 共有オフ（「共有を始める」でログイン）');return}u=(await a.signInWithPopup(new f.auth.GoogleAuthProvider())).user}
+  fbMe=u.email||'';fbLive=true;fbFirst=false;fbSync={};fbSM={};fbCloud={};fbReady={};fbSub={};localStorage.setItem('shoken_fbon','1');
+  const col=fbCol();
+  fbUnsub.push(col.onSnapshot(qs=>{
+   qs.docChanges().forEach(ch=>{if(ch.type==='removed')return;const id=ch.doc.id,x=ch.doc.data();fbCloud[id]=true;fbApplyClass(id,x);if(!fbSub[id])fbWatch(id)});
+   if(!fbFirst){fbFirst=true;fbPushSoon()}fbBadge('🟢 共有中（'+fbMe+'）')},e=>{fbLive=false;fbErr(e)}));
+  fbBadge('🟢 共有中（'+fbMe+'）');draw()
+ }catch(e){fbLive=false;fbErr(e)}}
+function fbStop(){fbUnsub.forEach(u=>{try{u()}catch(e){}});fbUnsub=[];fbLive=false;fbFirst=false;localStorage.removeItem('shoken_fbon');fbBadge('');}
+function fbApplyClass(id,x){let m={};try{m=JSON.parse(x.json||'{}')}catch(e){}
+ if(fbSM[id]===x.json&&S.classes.some(k=>k.id===id))return;fbSM[id]=x.json;
+ let c=S.classes.find(k=>k.id===id);if(!c){c={id,name:x.name||'',students:[]};S.classes.push(c)}
+ const st=c.students;Object.assign(c,m,{id,students:st});
+ if(!S.mode&&x.mode)S.mode=x.mode;S.cur=S.cur||id;fbRefresh()}
+function fbWatch(id){fbSub[id]=true;
+ fbUnsub.push(fbCol().doc(id).collection('students').onSnapshot(qs=>{
+  const c=S.classes.find(k=>k.id===id);if(!c)return;let ch=false;const ss=fbSync[id]=fbSync[id]||{};
+  qs.docChanges().forEach(d=>{const sid=d.doc.id;
+   if(d.type==='removed'){delete ss[sid];const i=c.students.findIndex(s=>s.id===sid);if(i>=0){c.students.splice(i,1);ch=true}return}
+   const x=d.doc.data();if(ss[sid]===x.json)return;let st;try{st=JSON.parse(x.json)}catch(e){return}
+   ss[sid]=x.json;const i=c.students.findIndex(s=>s.id===sid);
+   if(i>=0){if(JSON.stringify(c.students[i])===x.json)return;c.students[i]=st}else c.students.push(st);ch=true});
+  c.students.sort((a,b)=>(+a.no||0)-(+b.no||0));
+  const first=!fbReady[id];fbReady[id]=true;
+  if(ch){lsSave();fbRefresh()}if(first)fbPushSoon()},e=>{fbErr(e)}))}
+function fbPushSoon(){if(!fbLive)return;clearTimeout(fbTimer);fbTimer=setTimeout(fbPush,800)}
+async function fbPush(){if(!fbLive||!fbFirst)return;if(fbBusy){fbAgain=true;return}fbBusy=true;
+ try{const col=fbCol(),db=firebase.firestore(),ts=()=>firebase.firestore.FieldValue.serverTimestamp(),ops=[];
+  S.classes.forEach(c=>{if(fbCloud[c.id]&&!fbReady[c.id])return;
+   const meta=JSON.stringify(Object.assign({},c,{students:undefined})),cd=col.doc(c.id);
+   if(fbSM[c.id]!==meta)ops.push({f:b=>b.set(cd,{name:c.name||'',mode:S.mode||'',json:meta,by:fbMe,at:ts()}),u:()=>{fbSM[c.id]=meta}});
+   const ss=fbSync[c.id]=fbSync[c.id]||{},seen={};
+   c.students.forEach(s=>{seen[s.id]=1;const j=JSON.stringify(s);if(ss[s.id]!==j)ops.push({f:b=>b.set(cd.collection('students').doc(s.id),{json:j,no:+s.no||0,by:fbMe,at:ts()}),u:()=>{ss[s.id]=j}})});
+   Object.keys(ss).forEach(id=>{if(!seen[id])ops.push({f:b=>b.delete(cd.collection('students').doc(id)),u:()=>{delete ss[id]}})})});
+  for(let i=0;i<ops.length;i+=400){const b=db.batch(),part=ops.slice(i,i+400);part.forEach(o=>o.f(b));await b.commit();part.forEach(o=>o.u())}
+  if(ops.length)fbBadge('🟢 共有中（保存しました '+new Date().toLocaleTimeString()+'）')
+ }catch(e){fbErr(e)}
+ fbBusy=false;if(fbAgain){fbAgain=false;fbPushSoon()}}
+function fbCard(){const c=fbCfg();
+ const head='<div class="c"><h2>先生どうしでリアルタイム共有（Firebase）</h2><div class="wn">⚠ 共有をオンにすると、入力した所見などのデータがGoogleのサーバー（Firebase）に保存され、同じ共有コードの先生と常に同期されます。学校・教育委員会の情報管理ルールで許可されているか確認し、氏名は入れず番号だけの運用にしてください。APIキーは共有されません。</div>';
+ if(!c)return head+'<div class="mu" style="margin-top:6px">Firebaseコンソールの「プロジェクトの設定」→「マイアプリ」にある <b>firebaseConfig</b> の中身を貼り付けてください。</div><textarea id="fbcfg" placeholder=\'apiKey: "...", authDomain: "...", projectId: "...", ...\' style="min-height:80px"></textarea><div class="r"><button class="p" onclick="fbSaveCfg()">設定を保存</button></div></div>';
+ return head+`<div class="r" style="margin-top:6px"><b>共有コード</b><input value="${esc(S.team||'')}" placeholder="例：2026-3nen（同じチームで同じ文字列）" style="width:260px" onchange="S.team=this.value.trim();save()" ${fbLive?'disabled':''}>
+ ${fbLive?'<button class="d" onclick="fbStop();draw()">共有を止める</button>':'<button class="p" onclick="fbStart(true)">共有を始める（Googleログイン）</button>'}</div>
+ <div class="mu" id="fbm">${fbLive?'🟢 共有中':'共有はオフです。'}</div><div class="mu">共有中は、クラス・生徒の入力（所見・委員会・部活動・AIの文章など）が自動で全員に反映されます。同じ生徒を同時に編集すると、あとから保存した内容になります。クラスの削除はクラウドには反映されません（生徒の削除は反映されます）。</div></div>`}
+setTimeout(()=>{if(localStorage.getItem('shoken_fbon')==='1'&&fbCfg()&&(S.team||'').trim())fbStart(false)},0);
 /* AI */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let stopF=false;
