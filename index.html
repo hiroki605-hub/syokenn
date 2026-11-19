@@ -276,7 +276,7 @@ function edit(){
   <div class="mu">入力は自動で保存されます。入れ終わったら「③ 文章を作る」へ進んでください。</div></div><div>${naraCard(s)}<div class="r" style="margin:12px 0 70px;justify-content:flex-end"><button onclick="mv(-1)" ${i?'':'disabled'}>◀ 前の人</button><button class="p" onclick="mv(1)" ${i<c.students.length-1?'':'disabled'} style="font-size:17px;padding:12px 22px">次の人へ ▶</button></div></div></div>
   <div class="fnav"><button onclick="mv(-1)" ${i?'':'disabled'}>◀ 前</button><b>${esc(lab(s))}（${i+1}/${c.students.length}）</b><button class="p" onclick="mv(1)" ${i<c.students.length-1?'':'disabled'}>次の人 ▶</button></div>`;
 }
-function mv(d){const c=cls(),i=c.students.findIndex(s=>s.id===S.stu)+d;if(c.students[i]){S.stu=c.students[i].id;draw();scrollTo(0,0)}}
+function mv(d){const c=cls(),i=c.students.findIndex(s=>s.id===S.stu)+d;if(c.students[i]){const y=window.scrollY;S.stu=c.students[i].id;draw();window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y))}}
 function s_name(v){stu().name=v;save()}
 function setF(k,v){stu()[k]=v;save()}
 function addN(){const c=cls(),v=$('bn').value;
