@@ -522,15 +522,13 @@ function tGen(){
  $('main').innerHTML=`<div class="c"><div class="r"><b>クラス：</b>${clsSel()}</div>
   <div class="big">所見入力済み <b>${nin}</b>/${n}人　／　文章作成済み <b>${ng}</b>/${n}人</div><div class="bar"><i style="width:${n?ng/n*100:0}%"></i></div>
   ${S.key?'':'<div class="wn">AIで文章を作るには、APIキー（無料）が必要です。<button onclick="go(4)">APIキーを設定する</button></div>'}</div>
- <div class="c"><h2>文章を作る（3つの方法）</h2><div class="wn">AIの文章は下書きです。事実と違うところがないか、必ず読んで確認・修正してください。</div><div class="mu">「AIへの指示」は、文章の書き方の希望を日本語で書く欄です（例：「学習面を中心に」「前向きな表現で」）。書かなくても作れます。</div>
-  <div class="opt on" style="cursor:default"><b>A．クラス全員をまとめて作る</b>
-   <label class="f">AIへの指示（なくてもOK）例：学習面を中心に。前向きな表現で。</label><textarea oninput="S.instAll=this.value;save()" style="min-height:46px">${esc(S.instAll||'')}</textarea>
-   <div class="r"><button class="p gb" onclick="genAll('new')">未作成の人だけ作る</button><button class="gb" onclick="genAll('all')">全員作り直す</button><button class="d" onclick="stopF=true">中断</button></div><div class="mu">「未作成の人だけ作る」は、まだ文章がない人だけ作ります（作成済みの人は飛ばします）。「全員作り直す」は、手直しした文章も含めて上書きします。「中断」は、いま作っている1人が終わったところで止まります。</div></div>
-  <div class="opt" style="cursor:default"><b>B．チェックした生徒だけ作る</b>（下の一覧の□にチェック）
-   <label class="f">AIへの指示（なくてもOK）</label><textarea oninput="S.instSel=this.value;save()" style="min-height:46px">${esc(S.instSel||'')}</textarea>
-   <div class="r"><button class="p gb" onclick="genAll('sel')">チェックした生徒を作る</button></div><div class="mu">作り直したい人にチェックを入れて押します。所見が入っていない人は作れません。</div></div>
-  <div class="opt" style="cursor:default"><b>C．1人だけ作る・作り直す</b><div class="mu">下の一覧の「作る／作り直す」を押します。「見る・直す」で、この生徒だけへの指示と、できた文章の手直しができます。</div></div>
-  <div class="mu">35人で5〜10分ほどかかります。作成中は、このタブを閉じないでください。</div><div id="prog" class="big"></div></div>
+ <div class="c"><h2>文章を作る</h2><div class="wn">AIの文章は下書きです。事実と違うところがないか、必ず読んで確認・修正してください。</div>
+  <div class="stp"><span class="no">①</span><b>書き方の希望があれば入力（なくてもOK）</b>
+   <textarea oninput="S.instAll=this.value;S.instSel=this.value;save()" style="min-height:46px" placeholder="例：学習面を中心に。前向きな表現で。">${esc(S.instAll||'')}</textarea></div>
+  <div class="stp"><span class="no">②</span><b>だれの文章を作るか選んで押す</b>
+   <div class="r"><button class="p gb" onclick="genAll('new')" style="padding:12px 18px">▶ まだの人だけ作る（クラス全員のうち）</button><button class="gb" onclick="genAll('sel')" style="padding:12px 18px">☑ チェックした人だけ作る</button><button class="gb" onclick="genAll('all')" style="padding:12px 18px">↻ 全員作り直す</button><button class="d" onclick="stopF=true" style="padding:12px 18px">■ 中断</button></div>
+   <div class="mu">・「まだの人だけ」…文章がない人だけ作ります（作成済みは飛ばします）<br>・「チェックした人だけ」…下の一覧の□にチェックした人だけ作ります<br>・「全員作り直す」…手直しした文章も上書きします　・「中断」…いま作っている1人が終わったところで止まります</div></div>
+  <div class="mu">1人だけ作る・作り直すときは、下の一覧の「作る／作り直す」を押します。35人で5〜10分ほどかかります。作成中は、このタブを閉じないでください。</div><div id="prog" class="big"></div></div>
  <div class="c"><h2>生徒一覧</h2><div class="mu">「所見なし」＝②で所見がまだ入っていない人／「未作成」＝文章がまだない人／「作成済み」＝文章がある人。「見る・直す」で、元の所見と見比べながら確認・修正できます。</div><div class="r"><button onclick="gAll()">全選択／解除</button><button onclick="gAll('un')">未作成の人だけチェック</button><button class="p" onclick="openRv((c.students.find(has)||c.students[0]||{}).id)">📖 文章を1人ずつ確認する</button><label><input type="checkbox" ${showTx?'checked':''} onchange="showTx=this.checked;draw()"> 文章を一覧にも表示</label></div>
  ${c.students.map(s=>{const o=openId===s.id,t=!hasIn(s)?['no','所見なし']:has(s)?['ok','作成済み']:['no','未作成'];
   return `<div class="c" style="margin:6px 0;padding:8px"><div class="r" style="margin:0"><input type="checkbox" ${gsel.has(s.id)?'checked':''} onchange="gtg('${s.id}')"><b>${esc(lab(s))}</b><span class="tag ${t[0]}">${t[1]}</span><span style="flex:1"></span><button class="gb" id="b_${s.id}" onclick="gen1('${s.id}')">${has(s)?'作り直す':'作る'}</button><button onclick="openRv('${s.id}')">見る・直す</button></div>${o?rowEd(s):(showTx&&has(s)?pv(s):'')}</div>`}).join('')||'<div class="mu">生徒がいません</div>'}</div>`;
@@ -667,15 +665,15 @@ function t3(){
  if(!cls())S.cur=S.classes[0].id;const c=cls(),T=TYPES[ot];
  const head=(S.mode==='name'?['番号','氏名']:['番号']).concat(T[2]);
  const rows=c.students.map(s=>(S.mode==='name'?[s.no,s.name]:[s.no]).concat(T[1].map(k=>val(s,k))));
- window._ex={head,rows,title:`${c.name} ${T[0]}`};
+ window._exAB=null;window._ex={head,rows,title:`${c.name} ${T[0]}`};
  $('main').innerHTML=`<div class="c"><div class="r"><select onchange="S.cur=this.value;save();draw()">${S.classes.map(x=>`<option value="${x.id}" ${x.id===S.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
   ${Object.entries(TYPES).map(([k,v])=>`<button class="${ot===k?'on':''}" onclick="ot='${k}';draw()">${v[0]}</button>`).join('')}</div>
   <div class="r"><button class="p" onclick="doPrint()">印刷</button><button class="p" onclick="doXlsx()">Excelでダウンロード（見やすい）</button><button onclick="doCsv()">CSVダウンロード</button></div>
   <div class="mu"><div class="mu" style="margin-top:6px"><b>上のボタンの違い</b><br>・クラス全項目：すべての項目を1つの表にまとめます。／奈良県：総合所見＋特別活動の記録＋スポーツ・文化活動等の記録。／特別活動の記録、スポーツ・文化活動等の記録：②で選択して入れた内容だけを、それぞれ単独で出力。／大阪府：活動/行動の記録。／指導要録：3年の総合所見。<br>・Excelでダウンロード：セル内で折り返し、列の幅も整えた見やすいExcelファイル。<br>・CSVダウンロード：データだけのファイル（Excelで文字化けしません）。<br>・印刷：下の表をそのまま印刷します（PDF保存もできます）。<br>・校務システムや提出用のExcelに入れるときは、出力した表の該当する列をコピーして貼り付けてください（番号順に並んでいます）。${S.mode==='num'?'<br>・出席番号だけの設定なので、氏名は含まれません。':''}</div></div>
  <div class="c tw">${tbl()}</div>`;
 }
-function tbl(){const e=window._ex;return `<h2>${esc(e.title)}</h2><table><tr>${e.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${e.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`}
-function doPrint(){$('pa').innerHTML=tbl();window.print()}
+function tbl(){const e=window._ex2||window._ex;return `<h2>${esc(e.title)}</h2><table><tr>${e.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${e.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`}
+function doPrint(){window._ex2=getEx();$('pa').innerHTML=tbl();window._ex2=null;window.print()}
 
 /* ⑤ 出席日数（進路用）：校務支援システムの月別出欠表を貼り付け→期間(1〜3年)を指定して合計 */
 const FY=[4,5,6,7,8,9,10,11,12,1,2,3];
@@ -779,6 +777,14 @@ function attCalc(c,a,b){
  R.rows=Object.keys(acc).map(Number).sort((x,y)=>x-y).map(n=>({no:n,...acc[n]}));
  return R;
 }
+let attPend=false;
+function attRange(x,y){S.aa=x;S.ab=y;attPend=false;save();draw()}
+function attPick(i){if(!attPend){S.aa=S.ab=i;attPend=true}else{const p=S.aa;S.aa=Math.min(p,i);S.ab=Math.max(p,i);attPend=false}save();draw()}
+function attRowsOf(c,a,b){if(a>b)return[];const R=attCalc(c,a,b),nm=S.mode==='name'?2:1,nameOk=nm===2&&R.ref===3;
+ return R.rows.map(o=>{const st=nameOk?c.students.find(x=>x.no===o.no):null;return(nm===2?[o.no,st?st.name:'']:[o.no]).concat(o.t,[o.k+'/'+R.idx.length,o.rm.join('\n')])})}
+function getEx(){const e=window._ex;if(S.aout!=='all'||!window._exAB)return e;const ab=window._exAB,rows=[];
+ S.classes.forEach(c=>attRowsOf(c,ab[0],ab[1]).forEach(r=>rows.push([c.name].concat(r))));
+ return{head:['クラス'].concat(e.head),rows,title:`全クラス 出席日数 ${attLb(ab[0])}〜${attLb(ab[1])}`,nm:e.nm+1,nums:e.nums.map(x=>x+1),w:[10].concat(e.w),cls:true}}
 function tAtt(){
  if(!S.classes.length){$('main').innerHTML='<div class="c big">先に「① クラスを作る」でクラスを作ってください。<div class="r"><button class="p" onclick="go(0)">① クラスを作る へ</button></div></div>';return}
  if(!cls())S.cur=S.classes[0].id;
@@ -795,7 +801,7 @@ function tAtt(){
   return (nm===2?[o.no,st?st.name:'']:[o.no]).concat(o.t,[o.k+'/'+R.idx.length,o.rm.join('\n')]);
  });
  const title=`${c.name} 出席日数 ${attLb(a)}〜${attLb(b)}`;
- window._ex={head,rows,title,nm:nm+8,nums:[...Array(7).keys()].map(i=>nm+i),w:(nm===2?[7,14]:[7]).concat([10,16,16,10,10,10,10,10,50])};
+ window._exAB=[a,b];window._ex={head,rows,title,nm:nm+8,nums:[...Array(7).keys()].map(i=>nm+i),w:(nm===2?[7,14]:[7]).concat([10,16,16,10,10,10,10,10,50])};
  const ci=nm+7,multi=R.gs.length>1;
  $('main').innerHTML=`
  <div class="c"><div class="r" style="margin:0"><b>クラス：</b>${clsSel()}<span class="mu">校務支援システムの「通知表 → 出欠の記録」を1・2年は年間分を一括、3年は月ごとに貼り付けて、期間を指定して合計します。氏名は保存しません。</span></div></div>
@@ -812,9 +818,15 @@ function tAtt(){
   ${[1,2].map(g=>{const o=d[g].all;return `<div style="margin:2px 0"><b>${g}年</b> ${o&&Object.keys(o).length?`<span class="tag ok" style="display:inline-block;margin:2px">年間（${Object.keys(o).length}人・授業${Object.values(o)[0].j}日） <a href="#" onclick="attDel(${g},0);return false" style="text-decoration:none">×</a></span>`:'<span class="tag no" style="display:inline-block;margin:2px">年間 未</span>'}</div>`}).join('')}
   <div style="margin:2px 0"><b>3年</b> ${FY.map(m=>{const o=d[3][m];return o?`<span class="tag ok" style="display:inline-block;margin:2px">${m}月（${Object.keys(o).length}人・授業${Object.values(o)[0].j}日） <a href="#" onclick="attDel(3,${m});return false" style="text-decoration:none">×</a></span>`:`<span class="tag no" style="display:inline-block;margin:2px">${m}月 未</span>`}).join('')}</div></div>
  <div class="c"><h2>② 期間を指定して合計</h2>
-  <div class="r"><select onchange="S.aa=+this.value;save();draw()">${ropt(a)}</select>から<select onchange="S.ab=+this.value;save();draw()">${ropt(b)}</select>まで
-   <button class="p" onclick="doPrint()" ${rows.length?'':'disabled'}>印刷</button><button class="p" onclick="doXlsx()" ${rows.length?'':'disabled'}>Excel</button><button onclick="doCsv()" ${rows.length?'':'disabled'}>CSV</button></div>
-  <div class="mu">●はデータのあるところ。1年だけの集計は「1年（年間）〜1年（年間）」のように選んでください。</div>
+  <div class="stp"><span class="no">①</span><b>よく使う期間（ワンタッチ）</b>
+   <div class="r">${[['1年だけ',0,0],['2年だけ',1,1],['3年だけ（4月〜3月）',2,13],['1〜3年ぜんぶ',0,13],['3年 前半（4〜9月）',2,7],['3年 後半（10〜3月）',8,13]].map(p=>`<button class="${a===p[1]&&b===p[2]?'on':''}" onclick="attRange(${p[1]},${p[2]})">${p[0]}</button>`).join('')}</div></div>
+  <div class="stp"><span class="no">②</span><b>または、はじめ→おわりの順に押して選ぶ</b>
+   <div class="r" style="gap:4px">${[...Array(14).keys()].map(i=>`${i===2?'<span class="mu">｜3年</span>':''}<button class="chip ${i>=a&&i<=b?'on':(have.includes(i)?'has':'')}" onclick="attPick(${i})">${i<2?(i+1)+'年':FY[i-2]+'月'}${have.includes(i)?'':'<br><span style="font-size:10px">未</span>'}</button>`).join('')}</div>
+   <div class="mu">${attPend?'👉 次に「おわり」を押してください（1か所だけなら、もう一度同じところを押します）':'選んでいる期間：<b>'+attLb(a)+'〜'+attLb(b)+'</b>　（濃い青＝選択中／薄い青＝データあり／「未」＝まだ貼り付けていない）。1・2年は年間の合計です。'}</div></div>
+  <div class="stp"><span class="no">③</span><b>出力する</b>
+   <div class="r"><label><input type="radio" name="aout" ${S.aout==='all'?'':'checked'} onchange="S.aout='one';save();draw()"> このクラスだけ（${esc(c.name)}）</label><label><input type="radio" name="aout" ${S.aout==='all'?'checked':''} onchange="S.aout='all';save();draw()"> 全クラスまとめて（${S.classes.length}クラス）</label></div>
+   <div class="r"><button class="p" onclick="doPrint()" ${rows.length?'':'disabled'}>印刷</button><button class="p" onclick="doXlsx()" ${rows.length?'':'disabled'}>Excel</button><button onclick="doCsv()" ${rows.length?'':'disabled'}>CSV</button></div>
+   ${S.aout==='all'?'<div class="mu">全クラスの出力は、先頭に「クラス」の列がつき、データのあるクラスが続けて並びます。下の表は今のクラスのプレビューです。</div>':''}</div>
   ${a>b?'<div class="wn">「から」が「まで」より後になっています。</div>':''}
   ${miss.length&&a<=b?`<div class="wn">この期間のうち、まだ貼り付けていないところ：<b>${miss.map(attLb).join('、')}</b>（合計には入っていません）</div>`:''}
   ${multi&&!R.hasId&&R.lowId?`<div class="wn">${R.ref}年のデータに個人IDがありません（個人IDつきの形式になる前の貼り付け分）。${R.ref}年の各月をもう一度貼り直すと、学年をまたいで正しく合算できます。今は出席番号が同じ人どうしで合算しています。</div>`:''}
@@ -852,7 +864,7 @@ function xlsxBlob(e,sheetName){
  let rows=`<row r="1" ht="30" customHeight="1">${e.head.map((h,c)=>tc(1,c,h,1)).join('')}</row>`;
  e.rows.forEach((row,i)=>{const r=i+2;let n=1;
   row.forEach((v,c)=>{if(c>=nm){const cpl=Math.floor(W[c]/2.15);let k=0;String(v||'').split('\n').forEach(l=>k+=Math.max(1,Math.ceil(l.length/cpl)));n=Math.max(n,k)}});
-  rows+=`<row r="${r}" ht="${Math.min(409,n*19+8)}" customHeight="1">${row.map((v,c)=>(c===0||e.nums?.includes(c))?`<c r="${L(c)}${r}" s="3"><v>${+v||0}</v></c>`:tc(r,c,v,c<nm?3:2)).join('')}</row>`});
+  rows+=`<row r="${r}" ht="${Math.min(409,n*19+8)}" customHeight="1">${row.map((v,c)=>((c===0&&!e.cls)||e.nums?.includes(c))?`<c r="${L(c)}${r}" s="3"><v>${+v||0}</v></c>`:tc(r,c,v,c<nm?3:2)).join('')}</row>`});
  const M='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"',H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
  const sheet=`${H}<worksheet ${M}><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${W.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
  const B='<border><left style="thin"><color rgb="FF999999"/></left><right style="thin"><color rgb="FF999999"/></right><top style="thin"><color rgb="FF999999"/></top><bottom style="thin"><color rgb="FF999999"/></bottom><diagonal/></border>';
@@ -866,12 +878,12 @@ function xlsxBlob(e,sheetName){
   ['xl/styles.xml',styles],['xl/worksheets/sheet1.xml',sheet]]);
 }
 function doXlsx(){
- const e=window._ex,sn=e.title.replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'Sheet1';
+ const e=getEx(),sn=e.title.replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'Sheet1';
  const a=document.createElement('a');a.href=URL.createObjectURL(xlsxBlob(e,sn));
  a.download=e.title.replace(/\s+/g,'_')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function doCsv(){
- const e=window._ex,q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+ const e=getEx(),q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
  const csv='\uFEFF'+[e.head].concat(e.rows).map(r=>r.map(q).join(',')).join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
  a.download=e.title.replace(/\s+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
