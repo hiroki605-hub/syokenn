@@ -608,8 +608,8 @@ function t4(){
   <div class="wn" style="margin-top:10px"><b>文章づくりがなかなか進まないときは</b><br>
   AIは、時間帯や混み具合によって返事が遅くなることがあります。1人に1分以上かかる、「応答が遅い」「別のAIモデルに切り替え」と何度も出る、というときは次の手順を試してください。<ol style="margin:6px 0 0 1.2em;padding:0">
   <li>作成中なら「中止」を押します。</li>
-  <li>上の「モデル速度テスト」を押して、結果が出るまで待ちます（1〜2分）。</li>
-  <li>「OK」で秒数が一番短いモデル名を、上の「モデル名」の欄に入力して「保存」を押します。</li>
+  <li>上の「モデル速度テスト」を押して、結果が出るまで待ちます（遅いモデルは自動で飛ばします）。</li>
+  <li>一番速いモデル名が「モデル名」の欄に自動で入るので、「保存」を押します。</li>
   <li>「③文章を作る」にもどり、「未作成の人だけ作る」を押します（作成済みの人は飛ばされます）。</li></ol>
   <span class="mu">※ テストは毎回する必要はありません。保存したモデル名はこのパソコンに残ります。また遅くなったときだけ、もう一度試してください。<br>
   ※ すべて「エラー」や「失敗」になるときは、学校のネットワークでAIへの通信が制限されている可能性があります。管理の先生に確認してください。「エラー429」は無料の利用上限に達した状態なので、しばらく（1日の上限なら翌日）待ってください。</span></div></div>
@@ -644,13 +644,19 @@ function t4(){
 async function testK(){const t=$('at');S.key=$('ak').value.trim();S.model=$('am').value.trim()||'gemini-3.8-flash';save();t.textContent='確認中…';
  try{await callAI('次のJSONだけ返してください：{"ok":"OK"}');t.textContent='OK：接続できました'}catch(e){t.textContent=errMsg(e)}}
 async function speedTest(){const t=$('at');S.key=$('ak').value.trim();if(!S.key){t.textContent='先にAPIキーを入れてください';return}
- const ms=['gemini-3.1-flash-lite','gemini-3.5-flash','gemini-3.7-flash','gemini-3.8-flash'];const res=[];
- for(const m of ms){t.innerHTML=esc(res.join(' ／ '))+'　'+m+' を測定中…';const t0=Date.now();
-  try{const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),60000);
-   const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},body:JSON.stringify({contents:[{parts:[{text:'日本語で100字程度の短い文章を書いてください。'}]}]}),signal:ctl.signal});clearTimeout(to);
-   res.push(m+'：'+(r.ok?'OK ':'エラー'+r.status+' ')+((Date.now()-t0)/1000).toFixed(1)+'秒')}
-  catch(e){res.push(m+'：失敗（60秒以内に返らず）')}}
- t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>一番速い「OK」のモデル名を上の欄に入れて「保存」してください。'}
+ const ms=['gemini-3.1-flash-lite','gemini-3.5-flash','gemini-3.7-flash','gemini-3.8-flash'];const res=[];let best=null;
+ /* 順番に測り、今の最速より遅いモデルは途中で打ち切って飛ばす（最初のモデルは最大5秒待つ）。最速が出たらすぐモデル名欄に入れる */
+ const show=(cur)=>{t.innerHTML=res.map(x=>esc(x)).join('<br>')+(cur?'<br>'+esc(cur)+' を測定中…':'')};
+ for(const m of ms){show(m);const t0=Date.now();
+  try{const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),best?best.ms:5000);
+   const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},body:JSON.stringify({contents:[{parts:[{text:'日本語で100字程度の短い文章を書いてください。'}]}]}),signal:ctl.signal});
+   if(r.ok)await r.json();clearTimeout(to);const el=Date.now()-t0;
+   if(!r.ok){res.push(m+'：使えません（エラー'+r.status+'）')}
+   else if(!best||el<best.ms){best={m,ms:el};$('am').value=m;res.push(m+'：'+(el/1000).toFixed(1)+'秒 ← 今のところ最速（入力済み）')}
+   else res.push(m+'：'+(el/1000).toFixed(1)+'秒')}
+  catch(e){res.push(m+'：遅いので飛ばしました')}}
+ if(!best){t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>測定できたモデルがありません。キーや通信を確認してください。';return}
+ t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>最速は '+esc(best.m)+'（'+(best.ms/1000).toFixed(1)+'秒）です。モデル名の欄に入れました。「保存」を押すと反映されます。'}
 /* ③ */
 let ot='all';
 const TYPES={all:['クラス全項目',['ns','tk','sp','nt','os','yo'],['奈良 総合所見','奈良 特別活動の記録（委員会・係）','奈良 スポーツ・文化活動等の記録','奈良 特別活動（AI文章・参考）','大阪 活動/行動','指導要録']],
