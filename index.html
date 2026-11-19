@@ -47,6 +47,19 @@ summary{cursor:pointer;padding:4px 0}.pv{margin-top:8px;font-size:14px;white-spa
 .stk{position:sticky;top:0;z-index:5;max-height:32vh;overflow:auto;padding:8px 10px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
 .stk .r{margin:0}.stk .chip{min-width:38px;padding:3px 7px}
 .eg{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.eg>*{min-width:0}@media(max-width:960px){.eg{grid-template-columns:1fr}}
+.sec{border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:14px 0;background:var(--sf)}
+.sec>h3{font-size:16px;margin:0 0 10px;padding-left:10px;border-left:5px solid var(--ac)}
+.tg{display:grid;grid-template-columns:48px 1fr 1fr;gap:8px 10px;align-items:center}
+.tg .hd{font-size:13px;font-weight:700;color:var(--mu)}
+.tg .yr{font-size:18px;font-weight:700;text-align:center;background:var(--ac2);border-radius:8px;padding:8px 0}
+.tg input,.cl input,.cl select{width:100%;font-size:17px;padding:11px 12px;min-width:0}
+.tg input:focus,.cl input:focus,.cl select:focus{outline:3px solid var(--ac2);border-color:var(--ac)}
+.cl{display:grid;grid-template-columns:minmax(0,2fr) 104px minmax(0,1.3fr) 64px;gap:6px 10px;align-items:end;margin:4px 0}
+.cl .hd{font-size:13px;font-weight:700;color:var(--mu)}
+.cl.sub{border-top:1px dashed var(--bd);padding-top:8px;margin-top:10px}
+.cl .d{padding:11px 6px}
+.pvt{background:var(--ac2);border-radius:10px;padding:8px 12px;margin:10px 0 6px;font-size:15px;white-space:pre-wrap}
+@media(max-width:720px){.tg{grid-template-columns:40px 1fr}.tg .hd.h2{display:none}.tg .hd.h1{display:none}.cl{grid-template-columns:1fr 1fr}.cl .hd{display:none}.cl>:first-child{grid-column:1/-1}}
 </style></head><body>
 <div class="w">
 <h1>所見作成アプリ（調査書・指導要録）</h1>
@@ -181,36 +194,38 @@ function cpx(w){const s=stu(),t=w==='tk'?tkText(s):spText(s);if(!t){alert('コ�
  navigator.clipboard?navigator.clipboard.writeText(t).catch(fb):fb();alert('コピーしました')}
 function naraCard(s){
  const x=xx(s),o=(list,cur,ph)=>`<option value="">${ph}</option>`+list.map(v=>`<option value="${esc(v)}" ${String(v)===String(cur)?'selected':''}>${esc(v)}</option>`).join('');
- const g=[1,2,3].map(i=>`<div class="r nr" style="margin:3px 0"><b style="width:34px">${i}年</b><input list="dl_c" placeholder="委員会（選択／入力）" value="${esc(x.c[i-1])}" oninput="xa('c',${i-1},this.value)" onchange="rem('c',this.value)"><input list="dl_k" placeholder="係（選択／入力）" value="${esc(x.k[i-1])}" oninput="xa('k',${i-1},this.value)" onchange="rem('k',this.value)"></div>`).join('');
+ const g='<div class="tg"><span></span><span class="hd h1">委員会</span><span class="hd h2">係</span>'+[1,2,3].map(i=>`<span class="yr">${i}年</span><input list="dl_c" placeholder="委員会（▼から選ぶ／入力）" value="${esc(x.c[i-1])}" oninput="xa('c',${i-1},this.value)" onchange="rem('c',this.value)"><input list="dl_k" placeholder="係（▼から選ぶ／入力）" value="${esc(x.k[i-1])}" oninput="xa('k',${i-1},this.value)" onchange="rem('k',this.value)">`).join('')+'</div>';
  const cr=x.cert.map((c,i)=>{const d=CT[c.t]||CT.eiken;return `<div class="cr"><div class="r" style="margin:2px 0"><select onchange="xcSet(${i},'t',this.value)">${Object.entries(CT).map(([k,v])=>`<option value="${k}" ${k===c.t?'selected':''}>${v.n}</option>`).join('')}</select>
   <select onchange="xcSet(${i},'lv',this.value)">${o(d.lv,c.lv,'級を選ぶ')}</select>
   <select onchange="xcSet(${i},'r',this.value)">${`<option value="">取得年</option>`+[4,5,6,7,8].map(v=>`<option value="${v}" ${String(v)===String(c.r)?'selected':''}>${rw(v)}</option>`).join('')}</select>
   <select onchange="xcSet(${i},'m',this.value)">${`<option value="">月</option>`+[1,2,3,4,5,6,7,8,9,10,11,12].map(v=>`<option value="${v}" ${String(v)===String(c.m)?'selected':''}>${v}月</option>`).join('')}</select>
   <button class="d" style="padding:4px 10px" onclick="xcDel(${i})">削除</button></div></div>`}).join('');
- const cbs=x.cb.map((c,i)=>`<div class="r nr" style="margin:3px 0"><b style="white-space:nowrap">ほかの部活</b><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(c.n)}" oninput="cbSet(${i},'n',this.value)" onchange="rem('club',this.value)"><select onchange="cbSet(${i},'y',this.value)">${['1','2','3'].map(v=>`<option value="${v}" ${String(c.y)===v?'selected':''}>${v}年間</option>`).join('')}</select><input list="dl_role" placeholder="役職（なくてもOK）" value="${esc(c.r)}" oninput="cbSet(${i},'r',this.value)" onchange="rem('role',this.value)"><button class="d" style="padding:4px 10px" onclick="cbDel(${i})">削除</button></div>`).join('');
+ const cbs=x.cb.map((c,i)=>`<div class="cl sub"><div><div class="hd">ほかの部活 ${i+1}</div><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(c.n)}" oninput="cbSet(${i},'n',this.value)" onchange="rem('club',this.value)"></div><div><div class="hd">年数</div><select onchange="cbSet(${i},'y',this.value)">${['1','2','3'].map(v=>`<option value="${v}" ${String(c.y)===v?'selected':''}>${v}年間</option>`).join('')}</select></div><div><div class="hd">役職</div><input list="dl_role" placeholder="なくてもOK" value="${esc(c.r)}" oninput="cbSet(${i},'r',this.value)" onchange="rem('role',this.value)"></div><button class="d" onclick="cbDel(${i})">削除</button></div>`).join('');
   const tot=(+x.yrs||0)+x.cb.reduce((a,c)=>a+(+c.y||0),0);
   const aws=x.aw.map((a,i)=>`<div class="cr"><div class="r nr" style="margin:3px 0"><select onchange="awSet(${i},'y',this.value)">${['3','2','1'].map(v=>`<option value="${v}" ${String(a.y)===v?'selected':''}>${v}年</option>`).join('')}</select><input list="dl_org" placeholder="主催者（例：県体育協会）" value="${esc(a.o)}" oninput="awSet(${i},'o',this.value)" onchange="rem('org',this.value);awRec(${i})"><input list="dl_cname" placeholder="大会名（例：県中学校バレーボール春季選手権大会）" value="${esc(a.n)}" oninput="awSet(${i},'n',this.value)" onchange="awRec(${i})" style="flex:2"><input list="dl_res" placeholder="成績（例：2位）" value="${esc(a.r)}" oninput="awSet(${i},'r',this.value)" onchange="rem('res',this.value)"><button class="d" style="padding:4px 10px" onclick="awDel(${i})">削除</button></div></div>`).join('');
   return `<div class="c"><h2>奈良県調査書：特別活動・スポーツ文化活動等の記録（選択式）</h2>
- <div class="mu">1人ずつ入れるときはここです（手順3で貼り付けた内容も、ここに表示されます）。▼から選ぶか、直接入力します。入力した名前はそのまま出力され、次回から▼の選択肢にも残ります（学校ごとの呼び方でOK）。「体育」だけでも、一覧に「体育委員」があれば自動で補います。委員会も係もしていない学年は空欄でOKです。</div>
+ <div class="mu">1人ずつ入れる欄です（手順3で貼り付けた内容もここに出ます）。<details style="display:inline"><summary class="mu" style="display:inline;color:var(--ac)">入力のしかたを見る</summary><div class="mu" style="margin:4px 0">▼から選ぶか、直接入力します。入力した名前はそのまま出力され、次回から▼の選択肢にも残ります（学校ごとの呼び方でOK）。「体育」だけでも、一覧に「体育委員」があれば自動で補います。委員会も係もしていない学年は空欄でOKです。</div></details></div>
  <div id="dls">${DL_HTML()}</div>
- <label class="f">特別活動の記録（学年ごとの委員会・係）</label>${g}
- <div class="ob" id="pv_tk" style="margin-top:6px">${esc(tkText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('tk')">この表記をコピー</button></div>
- <label class="f">部活動・地域クラブ活動（先頭の「男子」「女子」は自動で外します）</label>
- <div class="r nr"><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(x.club)}" oninput="xs('club',this.value)" onchange="rem('club',this.value)">
-  <select onchange="xs('yrs',this.value)">${['3','2','1'].map(v=>`<option value="${v}" ${x.yrs===v?'selected':''}>${v}年間</option>`).join('')}</select>
-  <input list="dl_role" placeholder="役職（なくてもOK）" value="${esc(x.role)}" oninput="xs('role',this.value)" onchange="rem('role',this.value)"></div>
+ <div class="sec"><h3>① 特別活動の記録（学年ごとの委員会・係）</h3>${g}
+ <div class="pvt" id="pv_tk">${esc(tkText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('tk')">この表記をコピー</button></div></div>
+ <div class="sec"><h3>② 部活動・地域クラブ活動 <span class="mu" style="font-weight:400">（先頭の「男子」「女子」は自動で外します）</span></h3>
+ <div class="cl"><div><div class="hd">部活動</div><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(x.club)}" oninput="xs('club',this.value)" onchange="rem('club',this.value)"></div>
+  <div><div class="hd">年数</div><select onchange="xs('yrs',this.value)">${['3','2','1'].map(v=>`<option value="${v}" ${x.yrs===v?'selected':''}>${v}年間</option>`).join('')}</select></div>
+  <div><div class="hd">役職</div><input list="dl_role" placeholder="なくてもOK" value="${esc(x.role)}" oninput="xs('role',this.value)" onchange="rem('role',this.value)"></div><span></span></div>
   ${cbs}<div class="r"><button onclick="cbAdd()">＋ 途中でやめた部活・ほかの部活を追加</button></div>
-  <div class="mu">部活をかわった生徒は、上の欄に最初の部活とその年数、このボタンで次の部活を入れます。${x.cb.length&&tot>3?'<b style="color:#b45309">※ 年数の合計が3年を超えています（同時に所属していた場合はこのままでOK）。</b>':''}</div>
- <label class="f">大会・表彰（学年・主催者・大会名・成績を入れると、調査書の書き方に自動で整います）</label>${aws||'<div class="mu">まだありません</div>'}
+  <div class="mu">部活をかわった生徒は、上の欄に最初の部活とその年数、このボタンで次の部活を入れます。${x.cb.length&&tot>3?'<b style="color:#b45309">※ 年数の合計が3年を超えています（同時に所属していた場合はこのままでOK）。</b>':''}</div></div>
+ <div class="sec"><h3>③ 大会・表彰</h3><label class="f">大会・表彰（学年・主催者・大会名・成績を入れると、調査書の書き方に自動で整います）</label>${aws||'<div class="mu">まだありません</div>'}
   ${cnList().length?`<div class="mu" style="margin:4px 0">いままでに入れた大会名（押すと入ります。主催者もいっしょに入ります）：<br>${cnList().map((v,k)=>`<button type="button" class="tag ok" style="cursor:pointer;border:0;margin:2px;font:inherit" onclick="cnPick(${k})">${esc(v)}</button>`).join('')}</div>`:'<div class="mu" style="margin:4px 0">大会名を入れると、ここに記録されて、次からは押すだけで入れられます。</div>'}
   <div class="r"><button onclick="awAdd()">＋ 大会・表彰を追加</button></div>
   <div class="mu">団体競技は、本人が大会登録メンバーとして出場したものだけ入れます（賞状・証明書で確認）。「奈良市」「奈良県」などの地域名は自動で「市」「県」に直し、大会名の「男子」「女子」は外します。主催者・大会名・成績は、入力すると記録されて、次回から上の「いままでに入れた大会名」ボタンや▼から選べます。大会名の「第○回」は、翌年度（4月以降）に使うと自動で1回進んだ表記で出ます。</div>
-  <label class="f">その他（自由入力・1行に1件。上の欄に入れにくいときだけ使います）</label>
+</div>
+ <div class="sec"><h3>④ その他・検定</h3><label class="f">その他（自由入力・1行に1件。上の欄に入れにくいときだけ使います）</label>
  <textarea style="min-height:60px" oninput="xs('etc',this.value)">${esc(x.etc)}</textarea>
  <label class="f">検定（漢検・英検など。複数入れられます）</label>${cr||'<div class="mu">まだありません</div>'}
  <div class="r"><button onclick="xcAdd()">＋ 検定を追加</button></div>
- <label class="f">スポーツ・文化活動等の記録（できあがり）</label>
- <div class="ob" id="pv_sp">${esc(spText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('sp')">この表記をコピー</button></div>
+</div>
+ <div class="sec"><h3>⑤ スポーツ・文化活動等の記録（できあがり）</h3>
+ <div class="pvt" id="pv_sp">${esc(spText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('sp')">この表記をコピー</button></div></div>
  ${mgr()}<div class="mu">※ 主催者名は「〇〇市」のように具体的な地域名を書かず「市」と書く決まりです（大会欄に自分で入力する場合は注意してください）。検定の団体名・検定名は標準的な表記で入れています。県の記入上の注意と違う場合は、④の出力後に直してください。④の「奈良県」「クラス全項目」にもこの内容が入ります。</div></div>`}
 function DL_HTML(){return Object.keys(DL).map(id=>`<datalist id="${id}">${dlist(id).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
 /* ② */
