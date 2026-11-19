@@ -49,8 +49,14 @@ summary{cursor:pointer;padding:4px 0}.pv{margin-top:8px;font-size:14px;white-spa
 .fnav b{font-size:15px;white-space:nowrap}.fnav button{font-size:17px;padding:12px 18px;font-weight:700}
 .stk .r{margin:0}.stk .chip{min-width:38px;padding:3px 7px}
 .eg{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.eg>*{min-width:0}@media(max-width:960px){.eg{grid-template-columns:1fr}}
-.sec{border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:14px 0;background:var(--sf)}
-.sec>h3{font-size:16px;margin:0 0 10px;padding-left:10px;border-left:5px solid var(--ac)}
+.sec{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin:10px 0;background:var(--sf)}
+details.sec>summary{font-size:16px;font-weight:700;padding:2px 0 2px 10px;border-left:5px solid var(--ac);cursor:pointer;list-style:none}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:"　▼ ひらく";font-size:13px;font-weight:400;color:var(--ac)}
+details.sec[open]>summary::after{content:"　▲ とじる"}
+details.sec[open]>summary{margin-bottom:10px}
+details.nt{margin:6px 0}details.nt>summary{font-size:13px;color:var(--ac);padding:2px 0}
+.sec>h3{font-size:16px;margin:0 0 8px;padding-left:10px;border-left:5px solid var(--ac)}
 .tg{display:grid;grid-template-columns:48px 1fr 1fr;gap:8px 10px;align-items:center}
 .tg .hd{font-size:13px;font-weight:700;color:var(--mu)}
 .tg .yr{font-size:18px;font-weight:700;text-align:center;background:var(--ac2);border-radius:8px;padding:8px 0}
@@ -194,6 +200,7 @@ function xcSet(i,k,v){const c=xx(stu()).cert[i];c[k]=v;if(k==='t')c.lv='';save()
 function cpx(w){const s=stu(),t=w==='tk'?tkText(s):spText(s);if(!t){alert('コピーする内容がありません');return}
  const fb=()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()};
  navigator.clipboard?navigator.clipboard.writeText(t).catch(fb):fb();alert('コピーしました')}
+let nO={};
 function naraCard(s){
  const x=xx(s),o=(list,cur,ph)=>`<option value="">${ph}</option>`+list.map(v=>`<option value="${esc(v)}" ${String(v)===String(cur)?'selected':''}>${esc(v)}</option>`).join('');
  const g='<div class="tg"><span></span><span class="hd h1">委員会</span><span class="hd h2">係</span>'+[1,2,3].map(i=>`<span class="yr">${i}年</span><input list="dl_c" placeholder="委員会（▼から選ぶ／入力）" value="${esc(x.c[i-1])}" oninput="xa('c',${i-1},this.value)" onchange="rem('c',this.value)"><input list="dl_k" placeholder="係（▼から選ぶ／入力）" value="${esc(x.k[i-1])}" oninput="xa('k',${i-1},this.value)" onchange="rem('k',this.value)">`).join('')+'</div>';
@@ -205,7 +212,7 @@ function naraCard(s){
  const cbs=x.cb.map((c,i)=>`<div class="cl sub"><div><div class="hd">ほかの部活 ${i+1}</div><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(c.n)}" oninput="cbSet(${i},'n',this.value)" onchange="rem('club',this.value)"></div><div><div class="hd">年数</div><select onchange="cbSet(${i},'y',this.value)">${['1','2','3'].map(v=>`<option value="${v}" ${String(c.y)===v?'selected':''}>${v}年間</option>`).join('')}</select></div><div><div class="hd">役職</div><input list="dl_role" placeholder="なくてもOK" value="${esc(c.r)}" oninput="cbSet(${i},'r',this.value)" onchange="rem('role',this.value)"></div><button class="d" onclick="cbDel(${i})">削除</button></div>`).join('');
   const tot=(+x.yrs||0)+x.cb.reduce((a,c)=>a+(+c.y||0),0);
   const aws=x.aw.map((a,i)=>`<div class="cr"><div class="r nr" style="margin:3px 0"><select onchange="awSet(${i},'y',this.value)">${['3','2','1'].map(v=>`<option value="${v}" ${String(a.y)===v?'selected':''}>${v}年</option>`).join('')}</select><input list="dl_org" placeholder="主催者（例：県体育協会）" value="${esc(a.o)}" oninput="awSet(${i},'o',this.value)" onchange="rem('org',this.value);awRec(${i})"><input list="dl_cname" placeholder="大会名（例：県中学校バレーボール春季選手権大会）" value="${esc(a.n)}" oninput="awSet(${i},'n',this.value)" onchange="awRec(${i})" style="flex:2"><input list="dl_res" placeholder="成績（例：2位）" value="${esc(a.r)}" oninput="awSet(${i},'r',this.value)" onchange="rem('res',this.value)"><button class="d" style="padding:4px 10px" onclick="awDel(${i})">削除</button></div></div>`).join('');
-  return `<div class="c"><h2>奈良県調査書：特別活動・スポーツ文化活動等の記録（選択式）</h2>
+  return `<div class="c"><h2 style="margin-bottom:2px">奈良県調査書：特別活動・スポーツ文化活動等の記録（選択式）</h2>
  <div class="mu">1人ずつ入れる欄です（手順3で貼り付けた内容もここに出ます）。<details style="display:inline"><summary class="mu" style="display:inline;color:var(--ac)">入力のしかたを見る</summary><div class="mu" style="margin:4px 0">▼から選ぶか、直接入力します。入力した名前はそのまま出力され、次回から▼の選択肢にも残ります（学校ごとの呼び方でOK）。「体育」だけでも、一覧に「体育委員」があれば自動で補います。委員会も係もしていない学年は空欄でOKです。</div></details></div>
  <div id="dls">${DL_HTML()}</div>
  <div class="sec"><h3>① 特別活動の記録（学年ごとの委員会・係）</h3>${g}
@@ -216,19 +223,19 @@ function naraCard(s){
   <div><div class="hd">役職</div><input list="dl_role" placeholder="なくてもOK" value="${esc(x.role)}" oninput="xs('role',this.value)" onchange="rem('role',this.value)"></div><span></span></div>
   ${cbs}<div class="r"><button onclick="cbAdd()">＋ 途中でやめた部活・ほかの部活を追加</button></div>
   <div class="mu">部活をかわった生徒は、上の欄に最初の部活とその年数、このボタンで次の部活を入れます。${x.cb.length&&tot>3?'<b style="color:#b45309">※ 年数の合計が3年を超えています（同時に所属していた場合はこのままでOK）。</b>':''}</div></div>
- <div class="sec"><h3>③ 大会・表彰</h3><label class="f">大会・表彰（学年・主催者・大会名・成績を入れると、調査書の書き方に自動で整います）</label>${aws||'<div class="mu">まだありません</div>'}
+ <details class="sec" ${nO.aw||x.aw.length?'open':''} ontoggle="nO.aw=this.open"><summary>③ 大会・表彰（${x.aw.length}件）</summary><label class="f">大会・表彰（学年・主催者・大会名・成績を入れると、調査書の書き方に自動で整います）</label>${aws||'<div class="mu">まだありません</div>'}
   ${cnList().length?`<div class="mu" style="margin:4px 0">いままでに入れた大会名（押すと入ります。主催者もいっしょに入ります）：<br>${cnList().map((v,k)=>`<button type="button" class="tag ok" style="cursor:pointer;border:0;margin:2px;font:inherit" onclick="cnPick(${k})">${esc(v)}</button>`).join('')}</div>`:'<div class="mu" style="margin:4px 0">大会名を入れると、ここに記録されて、次からは押すだけで入れられます。</div>'}
   <div class="r"><button onclick="awAdd()">＋ 大会・表彰を追加</button></div>
-  <div class="mu">団体競技は、本人が大会登録メンバーとして出場したものだけ入れます（賞状・証明書で確認）。「奈良市」「奈良県」などの地域名は自動で「市」「県」に直し、大会名の「男子」「女子」は外します。主催者・大会名・成績は、入力すると記録されて、次回から上の「いままでに入れた大会名」ボタンや▼から選べます。大会名の「第○回」は、翌年度（4月以降）に使うと自動で1回進んだ表記で出ます。</div>
-</div>
- <div class="sec"><h3>④ その他・検定</h3><label class="f">その他（自由入力・1行に1件。上の欄に入れにくいときだけ使います）</label>
+  <details class="nt"><summary>入力のきまりを見る</summary><div class="mu">団体競技は、本人が大会登録メンバーとして出場したものだけ入れます（賞状・証明書で確認）。「奈良市」「奈良県」などの地域名は自動で「市」「県」に直し、大会名の「男子」「女子」は外します。主催者・大会名・成績は、入力すると記録されて、次回から上の「いままでに入れた大会名」ボタンや▼から選べます。大会名の「第○回」は、翌年度（4月以降）に使うと自動で1回進んだ表記で出ます。</div></details>
+</details>
+ <details class="sec" ${nO.et||x.etc||x.cert.length?'open':''} ontoggle="nO.et=this.open"><summary>④ その他・検定（${x.cert.length}件${x.etc?'・その他あり':''}）</summary><label class="f">その他（自由入力・1行に1件。上の欄に入れにくいときだけ使います）</label>
  <textarea style="min-height:60px" oninput="xs('etc',this.value)">${esc(x.etc)}</textarea>
  <label class="f">検定（漢検・英検など。複数入れられます）</label>${cr||'<div class="mu">まだありません</div>'}
  <div class="r"><button onclick="xcAdd()">＋ 検定を追加</button></div>
-</div>
+</details>
  <div class="sec"><h3>⑤ スポーツ・文化活動等の記録（できあがり）</h3>
  <div class="pvt" id="pv_sp">${esc(spText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('sp')">この表記をコピー</button></div></div>
- ${mgr()}<div class="mu">※ 主催者名は「〇〇市」のように具体的な地域名を書かず「市」と書く決まりです（大会欄に自分で入力する場合は注意してください）。検定の団体名・検定名は標準的な表記で入れています。県の記入上の注意と違う場合は、④の出力後に直してください。④の「奈良県」「クラス全項目」にもこの内容が入ります。</div></div>`}
+ ${mgr()}<details class="nt"><summary>注意書きを見る</summary><div class="mu">※ 主催者名は「〇〇市」のように具体的な地域名を書かず「市」と書く決まりです（大会欄に自分で入力する場合は注意してください）。検定の団体名・検定名は標準的な表記で入れています。県の記入上の注意と違う場合は、④の出力後に直してください。④の「奈良県」「クラス全項目」にもこの内容が入ります。</div></details></div>`}
 function DL_HTML(){return Object.keys(DL).map(id=>`<datalist id="${id}">${dlist(id).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
 /* ② */
 let sel=new Set(),busy=false;
