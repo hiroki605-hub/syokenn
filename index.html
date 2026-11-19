@@ -45,6 +45,8 @@ summary{cursor:pointer;padding:4px 0}.pv{margin-top:8px;font-size:14px;white-spa
 .tw td,.tw th{min-width:150px}.tw td:first-child,.tw th:first-child{min-width:0}
 .stp{margin:10px 0;padding:8px 10px;border-left:4px solid var(--ac);background:var(--ac2);border-radius:6px}.stp .no{font-weight:700;color:var(--ac);margin-right:4px}.flow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.flow span{background:var(--ac2);border:1px solid var(--ac);border-radius:16px;padding:2px 12px;font-size:14px}
 .stk{position:sticky;top:0;z-index:5;max-height:32vh;overflow:auto;padding:8px 10px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.fnav{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;display:flex;gap:8px;align-items:center;background:var(--sf);border:2px solid var(--ac);border-radius:14px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.fnav b{font-size:15px;white-space:nowrap}.fnav button{font-size:17px;padding:12px 18px;font-weight:700}
 .stk .r{margin:0}.stk .chip{min-width:38px;padding:3px 7px}
 .eg{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.eg>*{min-width:0}@media(max-width:960px){.eg{grid-template-columns:1fr}}
 .sec{border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:14px 0;background:var(--sf)}
@@ -271,7 +273,8 @@ function edit(){
   ${F('y1','1年の所見（前担任の指導要録から貼り付け）',90)}${F('y2','2年の所見（前担任の指導要録から貼り付け）',90)}
   ${F('y3','3年の様子・メモ（委員会・係・部活動など。なくてもOK）',60)}
   ${F('prev','昨年度の指導要録の文章（なくてもOK。入れると、これと違う表現で作ります）',60)}
-  <div class="mu">入力は自動で保存されます。入れ終わったら「③ 文章を作る」へ進んでください。</div></div><div>${naraCard(s)}</div></div>`;
+  <div class="mu">入力は自動で保存されます。入れ終わったら「③ 文章を作る」へ進んでください。</div></div><div>${naraCard(s)}<div class="r" style="margin:12px 0 70px;justify-content:flex-end"><button onclick="mv(-1)" ${i?'':'disabled'}>◀ 前の人</button><button class="p" onclick="mv(1)" ${i<c.students.length-1?'':'disabled'} style="font-size:17px;padding:12px 22px">次の人へ ▶</button></div></div></div>
+  <div class="fnav"><button onclick="mv(-1)" ${i?'':'disabled'}>◀ 前</button><b>${esc(lab(s))}（${i+1}/${c.students.length}）</b><button class="p" onclick="mv(1)" ${i<c.students.length-1?'':'disabled'}>次の人 ▶</button></div>`;
 }
 function mv(d){const c=cls(),i=c.students.findIndex(s=>s.id===S.stu)+d;if(c.students[i]){S.stu=c.students[i].id;draw();scrollTo(0,0)}}
 function s_name(v){stu().name=v;save()}
