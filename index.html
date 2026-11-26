@@ -96,8 +96,8 @@ const renum=c=>c.students.forEach((s,i)=>s.no=i+1);
 const blank=()=>({id:uid(),no:0,name:'',y1:'',y2:'',y3:'',prev:'',ns:'',nt:'',os:'',yo:''});
 function go(t){S.tab=t;save();draw()}
 function draw(){
- $('tabs').innerHTML=['① クラスを作る','② 所見を入れる','③ 文章を作る','④ 出力する','❓ 使い方・APIキー','📅 出席日数（進路用）'].map((n,i)=>`<button class="${S.tab===i?'on':''}" onclick="go(${i})">${n}</button>`).join('');
- $('gd').innerHTML=S.tab===5?'':guide();[t1,t2,tGen,t3,t4,tAtt][S.tab]();
+ $('tabs').innerHTML=['① クラスを作る','② 所見を入れる','③ 文章を作る','④ 出力する','❓ 使い方・APIキー','📅 出席日数（進路用）','📝 学習活動の記録'].map((n,i)=>`<button class="${S.tab===i?'on':''}" onclick="go(${i})">${n}</button>`).join('');
+ $('gd').innerHTML=(S.tab===5||S.tab===6)?'':guide();[t1,t2,tGen,t3,t4,tAtt,tGaku][S.tab]();
 }
 /* ① */
 function t1(){
@@ -684,6 +684,64 @@ function t3(){
 }
 function tbl(){const e=window._ex2||window._ex;return `<h2>${esc(e.title)}</h2><table><tr>${e.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${e.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`}
 function doPrint(){window._ex2=getEx();$('pa').innerHTML=tbl();window._ex2=null;window.print()}
+
+/* ⑥ 学習活動の記録（奈良県調査書）：総合的な学習の時間でやったことから例文を作る */
+function gk(){return S.gk||(S.gk={yr:'3',n:5,len:100,items:'',note:'',out:[]})}
+let gkBusy=false,gkMsg='';
+function gkSet(k,v){gk()[k]=v;save()}
+function gkOut(i,v){gk().out[i]=v;save();const e=$('gkc'+i);if(e)e.textContent=v.length+'字'}
+function gkDel(i){gk().out.splice(i,1);save();draw()}
+function gkCopy(i){gkClip(i<0?gk().out.filter(Boolean).join('\n'):gk().out[i])}
+function gkClip(t){
+ const done=()=>{gkMsg='✔ コピーしました。Excelや調査書のセルに貼り付けてください';const e=$('gkm');if(e)e.textContent=gkMsg};
+ const fb=()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove();done()};
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,fb);else fb()}
+function gkPrompt(items,g){return `あなたは日本の中学校の担任です。奈良県の調査書の「学習活動の記録」欄（総合的な学習の時間でどんな学習をしたかを書く欄）に書く文章の【例文】を${g.n}個作ってください。
+【総合的な学習の時間で行った活動（先生が入力）】
+${items.map(x=>'・'+x).join('\n')}
+【先生からのひとこと（任意）】${(g.note||'').trim()||'なし'}
+【文章の形式の参考（書き方だけ参考にし、内容は真似しない）】
+総合的な学習の時間で、沖縄の歴史と現状を通して、復興に関わる人々の力、戦争と平和、文化について学習した。「沖縄戦」や戦争中の人々の暮らしについて、現地研修を含め学習したことを自分の意見とともに発表することができた。
+総合的な学習の時間で「奈良県の観光」の現状と課題について調査・分析し、自分の考えを提言としてまとめ、全体の発表会で発信した。
+ルール：
+- 入力にない活動・場所・成果・人や団体の名前は作らない。入力された活動だけを使う。「調べた」「まとめた」「発表した」など、学習の一般的な流れを表す言葉で補うのはよい。
+- 常体（〜た。〜できた。）。「総合的な学習の時間で」から書き始める。氏名・学校名は書かない。
+- 1つの例文は約${g.len}字（1〜2文）。
+- ${g.n}個の例文は、構成や言い回しを変える。活動が複数あるときは、「すべてをまとめた例文」と「活動を絞った例文」を混ぜる。
+- 生徒個人の様子（意欲・成績など）は書かず、クラス全員に使える内容にする。
+- 数字は全角の算用数字で書く。
+次のJSONのみ出力：{"samples":["例文1","例文2"]}`}
+async function gkMake(){
+ const g=gk();if(gkBusy)return;
+ const items=(g.items||'').split('\n').map(x=>x.trim()).filter(Boolean);
+ if(!items.length){alert('総合的な学習の時間で行ったことを、1つ以上入れてください');return}
+ gkBusy=true;stopF=false;const m=$('gkm'),b=$('gkb');m.textContent='例文を作っています…（10秒ほどかかります）';if(b)b.disabled=true;
+ const pre=g.yr?`・${g.yr}年：`:'';
+ try{const r=await callAI(gkPrompt(items,g),t=>{m.textContent=t});
+  const a=(Array.isArray(r.samples)?r.samples:[]).map(x=>String(x||'').trim().replace(/^[・\-\s]+/,'')).filter(Boolean);
+  if(!a.length)throw{code:'format'};
+  g.out=a.map(x=>nz(pre+x));gkMsg=`✔ ${a.length}個の例文を作りました。気に入った文を選んで、直してから使ってください`;
+ }catch(e){gkMsg='⚠ '+errMsg(e).replace(/「未作成の人だけ作成」/g,'「例文を作る」')}
+ gkBusy=false;save();draw()}
+function tGaku(){
+ const g=gk(),opt=(arr,v)=>arr.map(a=>`<option value="${a[0]}" ${String(a[0])===String(v)?'selected':''}>${a[1]}</option>`).join('');
+ $('main').innerHTML=`
+ <div class="c"><h2>📝 学習活動の記録（奈良県調査書）</h2>
+  <div class="mu">調査書の「学習活動の記録」欄に書く文章の例文を作ります。総合的な学習の時間で行ったことを入れると、AIが例文をいくつか作ります。クラス全員に使える文章で、生徒の所見や個人情報はAIに送りません。</div></div>
+ <div class="c"><h2>① 総合的な学習の時間で行ったこと</h2>
+  <div class="mu">1行に1つずつ、いくつでも入れられます。短いメモで大丈夫です。</div>
+  <textarea style="min-height:130px;margin-top:6px" placeholder="例：&#10;奈良県の観光の現状と課題を調べて、提言にまとめた&#10;沖縄への修学旅行に向けて、平和学習をした&#10;職場体験で、働く人の思いを聞いた" oninput="gkSet('items',this.value)">${esc(g.items)}</textarea>
+  <div class="r"><label class="mu">文頭の学年：<select onchange="gkSet('yr',this.value)">${opt([['3','・３年：をつける'],['2','・２年：をつける'],['1','・１年：をつける'],['','つけない']],g.yr)}</select></label>
+   <label class="mu">例文の数：<select onchange="gkSet('n',+this.value)">${opt([[3,'3個'],[5,'5個'],[8,'8個']],g.n)}</select></label>
+   <label class="mu">文字数の目安：<select onchange="gkSet('len',+this.value)">${opt([[60,'約60字'],[80,'約80字'],[100,'約100字'],[120,'約120字'],[150,'約150字']],g.len)}</select></label></div>
+  <input style="width:100%" placeholder="ひとこと指示（なくてもOK。例：調べて発表したことを中心に）" value="${esc(g.note||'')}" oninput="gkSet('note',this.value)"></div>
+ <div class="c"><h2>② 例文</h2>
+  ${S.key?'':'<div class="wn">AIを使うために、APIキーの設定が必要です。<button onclick="go(4)">❓ 使い方・APIキー へ</button></div>'}
+  <div class="r"><button class="p big" id="gkb" onclick="gkMake()" ${gkBusy?'disabled':''}>${g.out.length?'もう一度、例文を作る':'例文を作る'}</button><span class="mu" id="gkm">${esc(gkMsg)}</span></div>
+  ${g.out.length?`<div class="r"><button onclick="gkCopy(-1)">ぜんぶコピー</button><span class="mu">例文は直接書き換えられます。作り直すと、今の例文は新しいものに置き換わります。</span></div>`:''}
+  ${g.out.map((t,i)=>`<div class="c" style="margin:8px 0"><div class="r" style="margin:0"><b>例文${i+1}</b><span class="mu" id="gkc${i}">${t.length}字</span><button onclick="gkCopy(${i})">コピー</button><button class="d" onclick="gkDel(${i})">削除</button></div><textarea oninput="gkOut(${i},this.value)" style="min-height:80px;margin-top:6px">${esc(t)}</textarea></div>`).join('')}
+  <div class="wn">AIの文章は下書きです。実際に行った学習と合っているか、必ず担任が確認・修正してください。</div></div>`;
+}
 
 /* ⑤ 出席日数（進路用）：校務支援システムの月別出欠表を貼り付け→期間(1〜3年)を指定して合計 */
 const FY=[4,5,6,7,8,9,10,11,12,1,2,3];
