@@ -656,8 +656,8 @@ async function speedTest(){const t=$('at');S.key=$('ak').value.trim();if(!S.key)
  if(!best){t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>測定できたモデルがありません。キーや通信を確認してください。';return}
  t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>最速は '+esc(best.m)+'（'+(best.ms/1000).toFixed(1)+'秒）です。モデル名の欄に入れました。「保存」を押すと反映されます。'}
 /* ③ */
-const OCOL=[['ns','奈良 総合所見'],['tk','奈良 特別活動の記録（委員会・係）'],['sp','奈良 スポーツ・文化活動等の記録'],['nt','奈良 特別活動（AI文章・参考）'],['os','大阪 活動/行動'],['yo','指導要録 総合所見（3年）']];
-const OPRE=[['ぜんぶ',['ns','tk','sp','nt','os','yo']],['奈良県',['ns','tk','sp','nt']],['大阪府',['os']],['指導要録（3年）',['yo']],['特別活動の記録',['tk']],['スポーツ・文化活動等の記録',['sp']]];
+const OCOL=[['ns','奈良 総合所見'],['nt','奈良 特別活動（AI文章・参考）'],['os','大阪 活動/行動'],['tk','奈良 特別活動の記録（委員会・係）'],['sp','奈良 スポーツ・文化活動等の記録'],['yo','指導要録 総合所見（3年）']];
+const OPRE=[['ぜんぶ',['ns','nt','os','tk','sp','yo']],['奈良県',['ns','nt','tk','sp']],['大阪府',['os']],['指導要録（3年）',['yo']],['特別活動の記録',['tk']],['スポーツ・文化活動等の記録',['sp']]];
 function ocSel(){return Array.isArray(S.oc)?S.oc.filter(k=>OCOL.some(o=>o[0]===k)):OCOL.map(o=>o[0])}
 function ocSet(a){S.oc=OCOL.map(o=>o[0]).filter(k=>a.includes(k));save();draw()}
 function ocTog(k){const a=ocSel();ocSet(a.includes(k)?a.filter(x=>x!==k):a.concat(k))}
