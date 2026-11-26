@@ -42,7 +42,7 @@ summary{cursor:pointer;padding:4px 0}.pv{margin-top:8px;font-size:14px;white-spa
 #pa{display:none}
 @media print{#rv{display:none!important}body>.w{display:none}#pa{display:block;color:#000;background:#fff}#pa td,#pa th{border:1px solid #000;font-size:11pt}}
 .nr input{flex:1 1 150px;min-width:120px}.nr select{padding:9px 6px}.cr{border:1px solid var(--bd);border-radius:10px;padding:6px 8px;margin:6px 0}
-.tw td,.tw th{min-width:150px}.tw td:first-child,.tw th:first-child{min-width:0}
+.tw td,.tw th{min-width:150px}.tw td:first-child,.tw th:first-child{min-width:0}.pv td,#pa td{white-space:pre-wrap;line-height:1.55}.pv th{background:var(--ac2);text-align:center}.pv td:first-child{text-align:center}.pv tr:nth-child(even) td{background:rgba(127,127,127,.06)}.ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:6px}.ocb{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;cursor:pointer}.ocb.on{background:var(--ac2);border-color:var(--ac)}.ocb input{width:20px;height:20px;margin:2px 0 0;flex:none}button.big{padding:12px 18px;font-size:15px}
 .stp{margin:10px 0;padding:8px 10px;border-left:4px solid var(--ac);background:var(--ac2);border-radius:6px}.stp .no{font-weight:700;color:var(--ac);margin-right:4px}.flow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.flow span{background:var(--ac2);border:1px solid var(--ac);border-radius:16px;padding:2px 12px;font-size:14px}
 .stk{position:sticky;top:0;z-index:5;max-height:32vh;overflow:auto;padding:8px 10px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
 .fnav{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;display:flex;gap:8px;align-items:center;background:var(--sf);border:2px solid var(--ac);border-radius:14px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
@@ -656,21 +656,31 @@ async function speedTest(){const t=$('at');S.key=$('ak').value.trim();if(!S.key)
  if(!best){t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>測定できたモデルがありません。キーや通信を確認してください。';return}
  t.innerHTML=res.map(x=>esc(x)).join('<br>')+'<br>最速は '+esc(best.m)+'（'+(best.ms/1000).toFixed(1)+'秒）です。モデル名の欄に入れました。「保存」を押すと反映されます。'}
 /* ③ */
-let ot='all';
-const TYPES={all:['クラス全項目',['ns','tk','sp','nt','os','yo'],['奈良 総合所見','奈良 特別活動の記録（委員会・係）','奈良 スポーツ・文化活動等の記録','奈良 特別活動（AI文章・参考）','大阪 活動/行動','指導要録']],
- nara:['奈良県',['ns','tk','sp','nt'],['総合所見','特別活動の記録（委員会・係）','スポーツ・文化活動等の記録','特別活動（AI文章・参考）']],tk:['特別活動の記録',['tk'],['特別活動の記録（委員会・係）']],sp:['スポーツ・文化活動等の記録',['sp'],['スポーツ・文化活動等の記録']],
-osaka:['大阪府',['os'],['活動/行動の記録']],yo:['指導要録（3年）',['yo'],['総合所見']]};
+const OCOL=[['ns','奈良 総合所見'],['tk','奈良 特別活動の記録（委員会・係）'],['sp','奈良 スポーツ・文化活動等の記録'],['nt','奈良 特別活動（AI文章・参考）'],['os','大阪 活動/行動'],['yo','指導要録 総合所見（3年）']];
+const OPRE=[['ぜんぶ',['ns','tk','sp','nt','os','yo']],['奈良県',['ns','tk','sp','nt']],['大阪府',['os']],['指導要録（3年）',['yo']],['特別活動の記録',['tk']],['スポーツ・文化活動等の記録',['sp']]];
+function ocSel(){return Array.isArray(S.oc)?S.oc.filter(k=>OCOL.some(o=>o[0]===k)):OCOL.map(o=>o[0])}
+function ocSet(a){S.oc=OCOL.map(o=>o[0]).filter(k=>a.includes(k));save();draw()}
+function ocTog(k){const a=ocSel();ocSet(a.includes(k)?a.filter(x=>x!==k):a.concat(k))}
 function t3(){
  if(!S.mode||!S.classes.length){$('main').innerHTML='<div class="c">先にクラスを作成してください。</div>';return}
- if(!cls())S.cur=S.classes[0].id;const c=cls(),T=TYPES[ot];
- const head=(S.mode==='name'?['番号','氏名']:['番号']).concat(T[2]);
- const rows=c.students.map(s=>(S.mode==='name'?[s.no,s.name]:[s.no]).concat(T[1].map(k=>val(s,k))));
- window._exAB=null;window._ex={head,rows,title:`${c.name} ${T[0]}`};
- $('main').innerHTML=`<div class="c"><div class="r"><select onchange="S.cur=this.value;save();draw()">${S.classes.map(x=>`<option value="${x.id}" ${x.id===S.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
-  ${Object.entries(TYPES).map(([k,v])=>`<button class="${ot===k?'on':''}" onclick="ot='${k}';draw()">${v[0]}</button>`).join('')}</div>
-  <div class="r"><button class="p" onclick="doPrint()">印刷</button><button class="p" onclick="doXlsx()">Excelでダウンロード（見やすい）</button><button onclick="doCsv()">CSVダウンロード</button></div>
-  <div class="mu"><div class="mu" style="margin-top:6px"><b>上のボタンの違い</b><br>・クラス全項目：すべての項目を1つの表にまとめます。／奈良県：総合所見＋特別活動の記録＋スポーツ・文化活動等の記録。／特別活動の記録、スポーツ・文化活動等の記録：②で選択して入れた内容だけを、それぞれ単独で出力。／大阪府：活動/行動の記録。／指導要録：3年の総合所見。<br>・Excelでダウンロード：セル内で折り返し、列の幅も整えた見やすいExcelファイル。<br>・CSVダウンロード：データだけのファイル（Excelで文字化けしません）。<br>・印刷：下の表をそのまま印刷します（PDF保存もできます）。<br>・校務システムや提出用のExcelに入れるときは、出力した表の該当する列をコピーして貼り付けてください（番号順に並んでいます）。${S.mode==='num'?'<br>・出席番号だけの設定なので、氏名は含まれません。':''}</div></div>
- <div class="c tw">${tbl()}</div>`;
+ if(!cls())S.cur=S.classes[0].id;
+ const c=cls(),sel=ocSel(),nm=S.mode==='name'?2:1,n=c.students.length,none=!sel.length;
+ const head=(nm===2?['番号','氏名']:['番号']).concat(sel.map(k=>OCOL.find(o=>o[0]===k)[1]));
+ const rows=none?[]:c.students.map(s=>(nm===2?[s.no,s.name]:[s.no]).concat(sel.map(k=>val(s,k))));
+ const pre=OPRE.find(q=>q[1].length===sel.length&&q[1].every(k=>sel.includes(k)));
+ window._exAB=null;window._ex={head,rows,title:`${c.name} ${pre?pre[0]:'選んだ項目'}`};
+ const fill=k=>c.students.filter(s=>val(s,k)).length,dis=none?'disabled':'';
+ $('main').innerHTML=`
+  <div class="c"><div class="r" style="margin:0"><b>クラス：</b><select onchange="S.cur=this.value;save();draw()">${S.classes.map(x=>`<option value="${x.id}" ${x.id===S.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select><span class="mu">${n}人</span></div></div>
+  <div class="c"><h2>① 出す項目を選ぶ</h2>
+   <div class="mu">チェックを入れた項目だけが、下の表・印刷・ダウンロードに入ります（複数OK）。</div>
+   <div class="r"><span class="mu">まとめて選ぶ：</span>${OPRE.map(q=>`<button class="${pre&&pre===q?'on':''}" onclick="ocSet(${esc(JSON.stringify(q[1])).replace(/"/g,'&quot;')})">${q[0]}</button>`).join('')}</div>
+   <div class="ogrid">${OCOL.map(o=>{const on=sel.includes(o[0]);return `<label class="ocb ${on?'on':''}"><input type="checkbox" ${on?'checked':''} onchange="ocTog('${o[0]}')"><span><b>${o[1]}</b><br><span class="mu">入力済み ${fill(o[0])} / ${n}人</span></span></label>`}).join('')}</div>
+   ${none?'<div class="wn">項目が1つも選ばれていません。上のチェックを入れてください。</div>':''}</div>
+  <div class="c"><h2>② 出力する <span class="mu">（${sel.length}項目 × ${n}人${S.mode==='num'?'・氏名なし':''}）</span></h2>
+   <div class="r"><button class="p big" onclick="doPrint()" ${dis}>🖨 印刷（PDF保存もできます）</button><button class="p big" onclick="doXlsx()" ${dis}>📥 Excelでダウンロード</button><button class="big" onclick="doCsv()" ${dis}>CSVでダウンロード</button></div>
+   <details><summary class="mu">ボタンの説明を見る</summary><div class="mu" style="margin-top:6px">・印刷：下の表をそのまま印刷します。印刷画面で「PDFに保存」を選べばPDFにもなります。<br>・Excel：セル内で折り返し、列の幅を整えた見やすいファイルです。<br>・CSV：データだけのファイルです（Excelで文字化けしません）。<br>・校務システムや提出用のExcelに入れるときは、出力した表の該当する列をコピーして貼り付けてください（番号順に並んでいます）。<br>・「特別活動の記録」「スポーツ・文化活動等の記録」は、②で選択して入れた内容だけが出ます。</div></details></div>
+  <div class="c tw pv"><div class="mu" style="margin-bottom:4px">③ 出力されるものと同じ内容のプレビューです</div>${tbl()}</div>`;
 }
 function tbl(){const e=window._ex2||window._ex;return `<h2>${esc(e.title)}</h2><table><tr>${e.head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${e.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`}
 function doPrint(){window._ex2=getEx();$('pa').innerHTML=tbl();window._ex2=null;window.print()}
