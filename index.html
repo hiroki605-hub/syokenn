@@ -825,7 +825,8 @@ function tAtt(){
    <div class="mu">${attPend?'👉 次に「おわり」を押してください（1か所だけなら、もう一度同じところを押します）':'選んでいる期間：<b>'+attLb(a)+'〜'+attLb(b)+'</b>　（濃い青＝選択中／薄い青＝データあり／「未」＝まだ貼り付けていない）。1・2年は年間の合計です。'}</div></div>
   <div class="stp"><span class="no">③</span><b>出力する</b>
    <div class="r"><label><input type="radio" name="aout" ${S.aout==='all'?'':'checked'} onchange="S.aout='one';save();draw()"> このクラスだけ（${esc(c.name)}）</label><label><input type="radio" name="aout" ${S.aout==='all'?'checked':''} onchange="S.aout='all';save();draw()"> 全クラスまとめて（${S.classes.length}クラス）</label></div>
-   <div class="r"><button class="p" onclick="doPrint()" ${rows.length?'':'disabled'}>印刷</button><button class="p" onclick="doXlsx()" ${rows.length?'':'disabled'}>Excel</button><button onclick="doCsv()" ${rows.length?'':'disabled'}>CSV</button></div>
+   <div class="r"><button class="p" onclick="doPrint()" ${rows.length?'':'disabled'}>印刷</button><button class="p" onclick="doXlsx()" ${rows.length?'':'disabled'}>Excel</button><button onclick="doCsv()" ${rows.length?'':'disabled'}>CSV</button><button class="p" style="background:#2e7d32;border-color:#2e7d32" onclick="doBook()" ${have.length?'':'disabled'}>出席簿に貼る用（Excel）</button></div>
+   <div class="mu">「出席簿に貼る用」は、このクラスの1年・2年・3年（各年間合計）を、出席簿の「授業日数｜出停｜忌引｜（自動）｜病気｜事故｜（自動）」×3学年の21列に合わせて出力します（期間の指定とは関係ありません）。出席簿の1番の生徒の「1年・授業日数」のセルに貼ってください。</div>
    ${S.aout==='all'?'<div class="mu">全クラスの出力は、先頭に「クラス」の列がつき、データのあるクラスが続けて並びます。下の表は今のクラスのプレビューです。</div>':''}</div>
   ${a>b?'<div class="wn">「から」が「まで」より後になっています。</div>':''}
   ${miss.length&&a<=b?`<div class="wn">この期間のうち、まだ貼り付けていないところ：<b>${miss.map(attLb).join('、')}</b>（合計には入っていません）</div>`:''}
@@ -887,6 +888,50 @@ function doCsv(){
  const csv='\uFEFF'+[e.head].concat(e.rows).map(r=>r.map(q).join(',')).join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
  a.download=e.title.replace(/\s+/g,'_')+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+/* 出席簿(1年|2年|3年 × 授業日数・出停・忌引・自動・病気・事故・自動)に貼る用 */
+function bookRows(c){
+ const d=attData(c),three=[];
+ FY.forEach(m=>{const o=d[3][m];if(o)Object.values(o).forEach(x=>three.push(x))});
+ const idMap={};three.forEach(x=>{if(x.id)idMap[x.id]=x.no});
+ const nos3=new Set(three.map(x=>x.no)),yr={1:{},2:{},3:{}};let skip=0,mon=0;
+ const add=(g,no,x)=>{const o=yr[g][no]||(yr[g][no]={j:0,t:0,k:0});o.j+=x.j;o.t+=x.t;o.k+=x.k};
+ FY.forEach(m=>{const o=d[3][m];if(o){mon++;Object.values(o).forEach(x=>add(3,x.no,x))}});
+ [1,2].forEach(g=>{const o=d[g].all;if(!o)return;Object.values(o).forEach(x=>{
+  let no;
+  if(!three.length)no=x.no;
+  else if(x.id&&idMap[x.id]!==undefined)no=idMap[x.id];
+  else if(!x.id&&nos3.has(x.no))no=x.no;
+  else{skip++;return}
+  add(g,no,x)})});
+ let mx=0;[1,2,3].forEach(g=>Object.keys(yr[g]).forEach(n=>{mx=Math.max(mx,+n)}));
+ const rows=[];
+ for(let n=1;n<=mx;n++){const r=[];
+  [1,2,3].forEach(g=>{const o=yr[g][n];r.push(o?o.j:'',o?o.t:'','','',o?o.k:'','','')});
+  rows.push(r)}
+ return{rows,skip,mon,has:[1,2,3].map(g=>Object.keys(yr[g]).length>0)};
+}
+function bookBlob(rows){
+ const L=i=>String.fromCharCode(65+i),H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+ const M='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"',R='http://schemas.openxmlformats.org/officeDocument/2006/relationships',P='http://schemas.openxmlformats.org/package/2006/relationships';
+ let sd='';rows.forEach((r,i)=>{sd+=`<row r="${i+1}">${r.map((v,c)=>v===''?'':`<c r="${L(c)}${i+1}"><v>${+v}</v></c>`).join('')}</row>`});
+ const sheet=`${H}<worksheet ${M}><cols><col min="1" max="21" width="9" customWidth="1"/></cols><sheetData>${sd}</sheetData></worksheet>`;
+ return zipStore([
+  ['[Content_Types].xml',`${H}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`],
+  ['_rels/.rels',`${H}<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+  ['xl/workbook.xml',`${H}<workbook ${M} xmlns:r="${R}"><sheets><sheet name="出席簿貼り付け用" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+  ['xl/_rels/workbook.xml.rels',`${H}<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`],
+  ['xl/worksheets/sheet1.xml',sheet]]);
+}
+function doBook(){
+ const c=cls(),b=bookRows(c);
+ if(!b.rows.length){alert('出力できるデータがありません');return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(bookBlob(b.rows));
+ a.download=('出席簿貼り付け用_'+c.name).replace(/\s+/g,'_')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+ alert(`${c.name}：${b.rows.length}番までの${b.rows.length}行を出力しました。\n`
+  +`入っている学年：${[1,2,3].filter((g,i)=>b.has[i]).map(g=>g+'年').join('・')}${b.has[2]?`（3年は${b.mon}か月分の合計）`:''}\n`
+  +(b.skip?`※1・2年のうち${b.skip}人分は3年の番号と対応できず除外しました（他クラス・転出など）\n`:'')
+  +`\n【貼り方】ダウンロードしたファイルの全セルをコピー → 出席簿の1番の生徒の「1年・授業日数」のセルを選ぶ → 右クリック「形式を選択して貼り付け」→「空白セルを無視する」にチェック→OK\n※自動計算の列（緑）を消さないため、必ず「空白セルを無視する」で貼ってください`);
 }
 draw();
 </script></body></html>
