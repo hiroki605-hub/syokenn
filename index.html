@@ -246,6 +246,16 @@ function needSetup(){$('main').innerHTML='<div class="c big">先に「① クラ
 function clsSel(){return `<select onchange="S.cur=this.value;S.stu=null;sel.clear();gsel.clear();openId=null;save();draw()">${S.classes.map(x=>`<option value="${x.id}" ${x.id===S.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`}
 let showTx=false,gsel=new Set(),openId=null,mgOpen=false,bkOpen=false;
 const hasIn=s=>!!((s.y1||'').trim()||(s.y2||'').trim()),has=s=>!!(s.ns||s.nt||s.os||s.yo);
+/* 作る文章の選択（奈良県／大阪府／指導要録） */
+const GT=[['n','奈良県',['ns','nt'],'奈良'],['o','大阪府',['os'],'大阪'],['y','指導要録',['yo'],'要録']];
+const gtSel=()=>{if(!S.gt)S.gt={n:1,o:1,y:1};return S.gt};
+const gtKeys=()=>{const g=gtSel();return GT.filter(x=>g[x[0]]).flatMap(x=>x[2])};
+const hasG=(s,x)=>x[2].some(k=>s[k]);
+const hasSel=s=>GT.some(x=>gtSel()[x[0]]&&hasG(s,x));
+const needG=s=>GT.some(x=>gtSel()[x[0]]&&!hasG(s,x));
+const missKeys=s=>GT.filter(x=>gtSel()[x[0]]&&!hasG(s,x)).flatMap(x=>x[2]);
+function setGt(k,v){gtSel()[k]=v?1:0;save();draw()}
+const gtNone=()=>{if(gtKeys().length)return false;alert('作る文章（奈良県・大阪府・指導要録）を、1つ以上チェックしてください');return true};
 function guide(){
  const all=S.classes.flatMap(c=>c.students),n=all.length,nin=all.filter(hasIn).length,ng=all.filter(has).length;let m,k;
  if(!S.mode||!S.classes.length){m='① 表示方法（番号／名前）を選び、クラスを作る';k=0}
@@ -492,7 +502,8 @@ async function callAI(p,onWait){
  throw last;
 }
 function errMsg(e){return e.code==='stop'?'中断しました。':e.code==='nokey'?'APIキーが未設定です。④で設定してください。':e.code===429?'無料枠の上限に達しました。しばらく（1日の上限なら翌日）待ってから「未作成の人だけ作成」で続きを作れます。':(e.code===400||e.code===403)?'APIキーまたはモデル名が正しくありません。④を確認してください。':([500,502,503,504,'network','format'].includes(e.code))?'AIが混み合っているか、通信が不安定です（'+e.code+'）。自動で何度か再試行しましたが作れませんでした。2〜3分ほど待って、もう一度「未作成の人だけ作成」を押してください。':'作成に失敗しました（'+(e.code||'error')+(e.message?'：'+e.message:'')+'）'}
-function mkPrompt(s,ex){const L=S.len;const ins=[ex,s.inst].filter(x=>x&&x.trim()).join('\n');return `あなたは日本の中学校の担任です。以下の情報から、調査書・指導要録の所見を書いてください。
+function mkJson(keys){const L=S.len;const D={ns:`奈良県調査書の総合所見（学習・人物・心身の概況）約${L.ns}字`,nt:`奈良県の特別活動の記録（学級活動・学校行事・生徒会活動）約${L.nt}字`,os:`大阪府調査書の活動/行動の記録 約${L.os}字`,yo:`3年の指導要録の総合所見（3年の委員会・係・部活動・検定等の記録も踏まえる） 約${L.yo}字`};return '{'+(keys||['ns','nt','os','yo']).map(k=>JSON.stringify(k)+':'+JSON.stringify(D[k])).join(',')+'}'}
+function mkPrompt(s,ex,keys){const L=S.len;const ins=[ex,s.inst].filter(x=>x&&x.trim()).join('\n');return `あなたは日本の中学校の担任です。以下の情報から、調査書・指導要録の所見を書いてください。
 【1年の所見】${s.y1||'なし'}
 【2年の所見】${s.y2||'なし'}
 【3年の様子・メモ】${s.y3||'なし'}
@@ -503,16 +514,16 @@ function mkPrompt(s,ex){const L=S.len;const ins=[ex,s.inst].filter(x=>x&&x.trim(
 ルール：
 - 入力にない事実（具体的な出来事・役職・成績）は作らない。入力が少なければ一般的な表現でまとめる。
 - 常体（〜た。〜である。）。氏名・学校名は書かない。
-- 4つの文章は互いに文の構成・言い回しをできるだけ変える。
+- 複数の文章を作る場合は、互いに文の構成・言い回しをできるだけ変える。
 - 1・2年の内容を踏まえ、3年間の成長が伝わるようにする。
 - 学年・年数・回数などの数字は、漢数字（一年・三年間）を使わず、全角の算用数字（１年・３年間・２・３年時）で統一して書く。「一翼」「一人一人」など数を表さない語は漢字のままでよい。
 - 委員会・係・部活動・大会・検定の記録がある場合は、その事実を所見に具体的に盛り込む（特に3年の活動）。委員会・係は学年ごとの記録なので、何年のときの活動かを取り違えない。主催団体名や「令和◯年◯月」などの細かい表記までは繰り返さなくてよい。記録にない役職・成績・大会結果は作らない。
 次のJSONのみ出力：
-{"ns":"奈良県調査書の総合所見（学習・人物・心身の概況）約${L.ns}字","nt":"奈良県の特別活動の記録（学級活動・学校行事・生徒会活動）約${L.nt}字","os":"大阪府調査書の活動/行動の記録 約${L.os}字","yo":"3年の指導要録の総合所見（3年の委員会・係・部活動・検定等の記録も踏まえる） 約${L.yo}字"}`}
-async function doGen(s,wait,ex){const r=await callAI(mkPrompt(s,ex),wait);['ns','nt','os','yo'].forEach(k=>{if(r[k])s[k]=nz(String(r[k]))});save()}
+${mkJson(keys)}`}
+async function doGen(s,wait,ex,keys){keys=keys||gtKeys();const r=await callAI(mkPrompt(s,ex,keys),wait);keys.forEach(k=>{if(r[k])s[k]=nz(String(r[k]))});save()}
 function gtg(id){gsel.has(id)?gsel.delete(id):gsel.add(id);draw()}
 function tgO(id){openId=openId===id?null:id;draw()}
-function gAll(w){const c=cls();gsel=w==='un'?new Set(c.students.filter(s=>hasIn(s)&&!has(s)).map(s=>s.id)):(gsel.size===c.students.length?new Set():new Set(c.students.map(s=>s.id)));draw()}
+function gAll(w){const c=cls();gsel=w==='un'?new Set(c.students.filter(s=>hasIn(s)&&needG(s)).map(s=>s.id)):(gsel.size===c.students.length?new Set():new Set(c.students.map(s=>s.id)));draw()}
 function pv(s){return `<div class="pv">${[['奈良県：総合所見','ns'],['奈良県：特別活動','nt'],['大阪府：活動/行動','os'],['指導要録（3年）','yo']].filter(x=>s[x[1]]).map(x=>`<div><span class="mu">${x[0]}（${s[x[1]].length}字）</span><div>${esc(s[x[1]])}</div></div>`).join('')}</div>`}
 function rowEd(s){
  const F=(k,t,h)=>`<label class="f">${t}</label><textarea oninput="setF('${k}',this.value);this.nextElementSibling.textContent=this.value.length+'字'" style="min-height:${h}px">${esc(s[k])}</textarea><div class="mu">${(s[k]||'').length}字</div>`;
@@ -522,18 +533,22 @@ function tGen(){
  if(noCls())return needSetup();
  if(!cls())S.cur=S.classes[0].id;const c=cls(),n=c.students.length,nin=c.students.filter(hasIn).length,ng=c.students.filter(has).length;
  $('main').innerHTML=`<div class="c"><div class="r"><b>クラス：</b>${clsSel()}</div>
-  <div class="big">所見入力済み <b>${nin}</b>/${n}人　／　文章作成済み <b>${ng}</b>/${n}人</div><div class="bar"><i style="width:${n?ng/n*100:0}%"></i></div>
+  <div class="big">所見入力済み <b>${nin}</b>/${n}人　／　文章作成済み <b>${ng}</b>/${n}人</div>
+  <div class="mu">${GT.map(x=>x[1]+' <b>'+c.students.filter(s=>hasG(s,x)).length+'</b>/'+n+'人').join('　／　')}</div><div class="bar"><i style="width:${n?ng/n*100:0}%"></i></div>
   ${S.key?'':'<div class="wn">AIで文章を作るには、APIキー（無料）が必要です。<button onclick="go(4)">APIキーを設定する</button></div>'}</div>
  <div class="c"><h2>文章を作る</h2><div class="wn">AIの文章は下書きです。事実と違うところがないか、必ず読んで確認・修正してください。</div>
   <div class="stp"><span class="no">①</span><b>書き方の希望があれば入力（なくてもOK）</b>
    <textarea oninput="S.instAll=this.value;S.instSel=this.value;save()" style="min-height:46px" placeholder="例：学習面を中心に。前向きな表現で。">${esc(S.instAll||'')}</textarea></div>
-  <div class="stp"><span class="no">②</span><b>だれの文章を作るか選んで押す</b>
+  <div class="stp"><span class="no">②</span><b>どの文章を作るか選ぶ</b>（チェックを外した文章は、まったく触りません）
+   <div class="r">${GT.map(x=>`<label style="font-size:15px"><input type="checkbox" ${gtSel()[x[0]]?'checked':''} onchange="setGt('${x[0]}',this.checked)"> <b>${x[1]}</b>${x[0]==='n'?'（総合所見・特別活動）':x[0]==='o'?'（活動/行動の記録）':'（3年・総合所見）'}</label>`).join('')}</div>
+   <div class="mu">例：「指導要録」だけにチェック → 奈良・大阪の文章はそのまま、指導要録だけ作り直します。</div></div>
+  <div class="stp"><span class="no">③</span><b>だれの文章を作るか選んで押す</b>
    <div class="r"><button class="p gb" onclick="genAll('new')" style="padding:12px 18px">▶ まだの人だけ作る（クラス全員のうち）</button><button class="gb" onclick="genAll('sel')" style="padding:12px 18px">☑ チェックした人だけ作る</button><button class="gb" onclick="genAll('all')" style="padding:12px 18px">↻ 全員作り直す</button><button class="d" onclick="stopF=true" style="padding:12px 18px">■ 中断</button></div>
-   <div class="mu">・「まだの人だけ」…文章がない人だけ作ります（作成済みは飛ばします）<br>・「チェックした人だけ」…下の一覧の□にチェックした人だけ作ります<br>・「全員作り直す」…手直しした文章も上書きします　・「中断」…いま作っている1人が終わったところで止まります</div></div>
-  <div class="mu">1人だけ作る・作り直すときは、下の一覧の「作る／作り直す」を押します。35人で5〜10分ほどかかります。作成中は、このタブを閉じないでください。</div><div id="prog" class="big"></div></div>
- <div class="c"><h2>生徒一覧</h2><div class="mu">「所見なし」＝②で所見がまだ入っていない人／「未作成」＝文章がまだない人／「作成済み」＝文章がある人。「見る・直す」で、元の所見と見比べながら確認・修正できます。</div><div class="r"><button onclick="gAll()">全選択／解除</button><button onclick="gAll('un')">未作成の人だけチェック</button><button class="p" onclick="openRv((c.students.find(has)||c.students[0]||{}).id)">📖 文章を1人ずつ確認する</button><label><input type="checkbox" ${showTx?'checked':''} onchange="showTx=this.checked;draw()"> 文章を一覧にも表示</label></div>
- ${c.students.map(s=>{const o=openId===s.id,t=!hasIn(s)?['no','所見なし']:has(s)?['ok','作成済み']:['no','未作成'];
-  return `<div class="c" style="margin:6px 0;padding:8px"><div class="r" style="margin:0"><input type="checkbox" ${gsel.has(s.id)?'checked':''} onchange="gtg('${s.id}')"><b>${esc(lab(s))}</b><span class="tag ${t[0]}">${t[1]}</span><span style="flex:1"></span><button class="gb" id="b_${s.id}" onclick="gen1('${s.id}')">${has(s)?'作り直す':'作る'}</button><button onclick="openRv('${s.id}')">見る・直す</button></div>${o?rowEd(s):(showTx&&has(s)?pv(s):'')}</div>`}).join('')||'<div class="mu">生徒がいません</div>'}</div>`;
+   <div class="mu">・「まだの人だけ」…②で選んだ文章がない人だけ、その文章を作ります（ある文章は飛ばします）<br>・「チェックした人だけ」…下の一覧の□にチェックした人だけ作ります<br>・「全員作り直す」…②で選んだ文章だけ、手直ししたものも上書きします（選んでいない文章はそのまま）　・「中断」…いま作っている1人が終わったところで止まります</div></div>
+  <div class="mu">1人だけ作る・作り直すときは、下の一覧の「作る／作り直す」を押します（②でチェックした文章だけ作ります）。35人で5〜10分ほどかかります。作成中は、このタブを閉じないでください。</div><div id="prog" class="big"></div></div>
+ <div class="c"><h2>生徒一覧</h2><div class="mu">「所見なし」＝②で所見がまだ入っていない人／「奈良○」＝奈良県の文章がある・「大阪×」＝大阪府の文章がまだない（要録＝指導要録）。「見る・直す」で、元の所見と見比べながら確認・修正できます。</div><div class="r"><button onclick="gAll()">全選択／解除</button><button onclick="gAll('un')">未作成の人だけチェック</button><button class="p" onclick="openRv((c.students.find(has)||c.students[0]||{}).id)">📖 文章を1人ずつ確認する</button><label><input type="checkbox" ${showTx?'checked':''} onchange="showTx=this.checked;draw()"> 文章を一覧にも表示</label></div>
+ ${c.students.map(s=>{const o=openId===s.id,t=!hasIn(s)?`<span class="tag no">所見なし</span>`:GT.map(x=>`<span class="tag ${hasG(s,x)?'ok':'no'}">${x[3]}${hasG(s,x)?'○':'×'}</span>`).join('');
+  return `<div class="c" style="margin:6px 0;padding:8px"><div class="r" style="margin:0"><input type="checkbox" ${gsel.has(s.id)?'checked':''} onchange="gtg('${s.id}')"><b>${esc(lab(s))}</b>${t}<span style="flex:1"></span><button class="gb" id="b_${s.id}" onclick="gen1('${s.id}')">${hasSel(s)?'作り直す':'作る'}</button><button onclick="openRv('${s.id}')">見る・直す</button></div>${o?rowEd(s):(showTx&&has(s)?pv(s):'')}</div>`}).join('')||'<div class="mu">生徒がいません</div>'}</div>`;
 }
 let rvId=null;
 function openRv(id){if(!id)return;rvId=id;drawRv();$('rv').scrollTop=0}
@@ -544,7 +559,7 @@ function drawRv(){
  const F=(k,t,h)=>`<label class="f">${t}</label><textarea oninput="setF('${k}',this.value);this.nextElementSibling.textContent=this.value.length+'字'" style="min-height:${h}px">${esc(s[k])}</textarea><div class="mu">${(s[k]||'').length}字</div>`;
  const O=(t,v)=>v&&v.trim()?`<div class="mu">${t}</div><div class="ob">${esc(v)}</div>`:'';
  e.innerHTML=`<div class="rvb"><div class="r" style="position:sticky;top:0;background:var(--bg);padding:6px 0;z-index:2"><b class="big">${esc(lab(s))}（${i+1}/${n}）</b><span class="tag ${has(s)?'ok':'no'}">${has(s)?'作成済み':'未作成'}</span><span style="flex:1"></span>
-  <button onclick="rvMv(-1)" ${i?'':'disabled'}>◀ 前の人</button><button onclick="rvMv(1)" ${i<n-1?'':'disabled'}>次の人 ▶</button><button class="p" id="rvgb" onclick="rvGen()">${has(s)?'この生徒を作り直す':'この生徒の文章を作る'}</button><button class="d" onclick="closeRv()">閉じる ✕</button></div>
+  <button onclick="rvMv(-1)" ${i?'':'disabled'}>◀ 前の人</button><button onclick="rvMv(1)" ${i<n-1?'':'disabled'}>次の人 ▶</button><button class="p" id="rvgb" onclick="rvGen()">${hasSel(s)?'この生徒を作り直す':'この生徒の文章を作る'}</button><button class="d" onclick="closeRv()">閉じる ✕</button></div>
   <div class="mu">キーボードの ← → で前後の人へ、Escで閉じます。文章は直接直せます（自動保存）。</div>
   <div class="rg"><div><h2>元の所見</h2>${O('1年の所見',s.y1)}${O('2年の所見',s.y2)}${O('3年の様子・メモ',s.y3)}${O('昨年度の指導要録',s.prev)}${O('委員会・係の記録（選択式）',tkText(s))}${O('部活動・大会・検定の記録（選択式）',spText(s))}${hasIn(s)?'':'<div class="mu">所見が入っていません</div>'}
    <label class="f">この生徒だけへの指示（なくてもOK。作り直すときに使われます）</label><textarea oninput="setF('inst',this.value)" style="min-height:50px" placeholder="例：部活動のことを詳しく">${esc(s.inst||'')}</textarea></div>
@@ -554,7 +569,8 @@ async function rvGen(){
  const s=cls().students.find(x=>x.id===rvId);
  if(!S.key){alert('先に「APIキー」を設定してください');return}
  if(!hasIn(s)){alert('所見が入っていません。「② 所見を入れる」で入力してください');return}
- if(has(s)&&!confirm('この生徒の文章を作り直します。手直しした内容も上書きされます。よろしいですか？'))return;
+ if(gtNone())return;
+ if(hasSel(s)&&!confirm('この生徒の、チェックした文章（'+GT.filter(x=>gtSel()[x[0]]).map(x=>x[1]).join('・')+'）を作り直します。手直しした内容も上書きされます。よろしいですか？'))return;
  if(busy){alert('いま別の文章を作成中です。終わるまでお待ちください');return}const b=$('rvgb');b.disabled=true;b.textContent='作成中…';
  busy=true;stopF=false;flStart('作成中…');try{await doGen(s,m=>flShow(m))}catch(e){if(e.code!=='stop')alert(errMsg(e))}busy=false;flOff();
  drawRv();
@@ -564,7 +580,8 @@ async function gen1(id){
  const s=cls().students.find(x=>x.id===id);
  if(!S.key){alert('先に「APIキー」を設定してください');go(4);return}
  if(!hasIn(s)){alert('先に「② 所見を入れる」で、1年か2年の所見を入れてください');return}
- if(has(s)&&!confirm('この生徒の文章を作り直します。手直しした内容も上書きされます。よろしいですか？'))return;
+ if(gtNone())return;
+ if(hasSel(s)&&!confirm('この生徒の、チェックした文章（'+GT.filter(x=>gtSel()[x[0]]).map(x=>x[1]).join('・')+'）を作り直します。手直しした内容も上書きされます。よろしいですか？'))return;
  if(busy){alert('いま別の文章を作成中です。終わるまでお待ちください');return}const b=$('b_'+id);b.disabled=true;b.textContent='作成中…';
  busy=true;stopF=false;flStart('作成中…');try{await doGen(s,m=>flShow(m));openId=id}catch(e){if(e.code!=='stop')alert(errMsg(e))}busy=false;flOff();
  draw();
@@ -572,12 +589,13 @@ async function gen1(id){
 async function genAll(mode){
  if(busy){alert('いま文章を作成中です。終わるまでお待ちください（画面の下に状況が出ます）');return}const c=cls();
  if(!S.key){alert('先に「APIキー」を設定してください');go(4);return}
+ if(gtNone())return;
  const ex=mode==='sel'?S.instSel:S.instAll;
  if(mode==='sel'&&!gsel.size){alert('下の一覧で、作りたい生徒の□にチェックを入れてください');return}
- const t=c.students.filter(s=>hasIn(s)&&(mode==='sel'?gsel.has(s.id):(mode==='all'||!has(s))));
- if(!t.length){alert(mode==='new'?'作る生徒がいません（所見が未入力、または全員作成済みです）':'チェックした生徒に所見が入っていません（「所見なし」の人は作れません）');return}
- const ow=t.filter(has).length;
- if(mode!=='new'&&ow&&!confirm(ow+'人の文章が上書きされます（手直しした内容も消えます）。よろしいですか？'))return;
+ const t=c.students.filter(s=>hasIn(s)&&(mode==='sel'?gsel.has(s.id):(mode==='all'||needG(s))));
+ if(!t.length){alert(mode==='new'?'作る生徒がいません（所見が未入力、または選んだ文章が全員作成済みです）':'チェックした生徒に所見が入っていません（「所見なし」の人は作れません）');return}
+ const ow=t.filter(hasSel).length;
+ if(mode!=='new'&&ow&&!confirm(ow+'人の「'+GT.filter(x=>gtSel()[x[0]]).map(x=>x[1]).join('・')+'」の文章が上書きされます（手直しした内容も消えます）。よろしいですか？'))return;
  busy=true;stopF=false;document.querySelectorAll('.gb').forEach(b=>b.disabled=true);let i=0,ok=0,fails=0,msg='';
  const P=h=>{const e=$('prog');if(e)e.innerHTML=h};
  flStart('準備中…');
@@ -586,7 +604,7 @@ async function genAll(mode){
   i++;const rest=Math.max(1,Math.ceil((t.length-i+1)*10/60));
   const head=`作成中 ${i}/${t.length}人（${lab(s)}）`;flT0=Date.now();
   P(`作成中 <b>${i}/${t.length}</b>（${esc(lab(s))}）…あと約${rest}分`);flShow(head);
-  try{await doGen(s,m=>{flShow(head+'：'+m);P(esc(head+'：'+m))},ex);ok++;fails=0}
+  try{await doGen(s,m=>{flShow(head+'：'+m);P(esc(head+'：'+m))},ex,mode==='new'?missKeys(s):undefined);ok++;fails=0}
   catch(e){if(e.code==='stop'){msg='中断しました。';break}msg=errMsg(e);if([429,404,'nokey',400,403].includes(e.code))break;if(++fails>=2)break;continue}
   msg='';
   if(i<t.length)await sleep(3000);
