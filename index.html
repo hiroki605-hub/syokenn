@@ -182,8 +182,10 @@ function spText(s){const x=xx(s),L=[],b=nB(x.club);
  return L.join('\n').replace(/[0-9]/g,d=>String.fromCharCode(d.charCodeAt(0)+0xFEE0))}
 /* 表記の統一：学年・年数は全角算用数字（１年・３年間・２・３年時）に、数字はすべて全角に */
 const nz=t=>typeof t!=='string'?t:t.replace(/[一二三](?:[・･～〜][一二三])*(?=学?年)/g,m=>m.replace(/[一二三]/g,c=>'１２３'['一二三'.indexOf(c)])).replace(/[0-9]/g,d=>String.fromCharCode(d.charCodeAt(0)+0xFEE0));
-function val(s,k){return k==='tk'?tkText(s):k==='sp'?spText(s):nz(s[k])}
-function updPv(){const s=stu();if(!s)return;const a=$('pv_tk'),b=$('pv_sp');if(a)a.textContent=tkText(s)||'（選ぶとここに表示されます）';if(b)b.textContent=spText(s)||'（選ぶとここに表示されます）'}
+const NONE='特記事項なし';
+function val(s,k){return k==='tk'?(tkText(s)||NONE):k==='sp'?(spText(s)||NONE):nz(s[k])}
+function rawVal(s,k){return k==='tk'?tkText(s):k==='sp'?spText(s):nz(s[k])}
+function updPv(){const s=stu();if(!s)return;const a=$('pv_tk'),b=$('pv_sp');if(a)a.textContent=tkText(s)||NONE;if(b)b.textContent=spText(s)||NONE}
 function xa(k,i,v){xx(stu())[k][i]=v;save();updPv()}
 function xs(k,v){xx(stu())[k]=v;save();updPv()}
 function awAdd(){xx(stu()).aw.push({y:'3',o:'',n:'',r:''});save();edit()}
@@ -197,7 +199,7 @@ function cbSet(i,k,v){xx(stu()).cb[i][k]=v;save();updPv()}
 function xcAdd(){xx(stu()).cert.push({t:'eiken',lv:'',r:'',m:''});save();edit()}
 function xcDel(i){xx(stu()).cert.splice(i,1);save();edit()}
 function xcSet(i,k,v){const c=xx(stu()).cert[i];c[k]=v;if(k==='t')c.lv='';save();k==='t'?edit():updPv()}
-function cpx(w){const s=stu(),t=w==='tk'?tkText(s):spText(s);if(!t){alert('コピーする内容がありません');return}
+function cpx(w){const s=stu(),t=(w==='tk'?tkText(s):spText(s))||NONE;
  const fb=()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()};
  navigator.clipboard?navigator.clipboard.writeText(t).catch(fb):fb();alert('コピーしました')}
 let nO={};
@@ -216,7 +218,7 @@ function naraCard(s){
  <div class="mu">1人ずつ入れる欄です（手順3で貼り付けた内容もここに出ます）。<details style="display:inline"><summary class="mu" style="display:inline;color:var(--ac)">入力のしかたを見る</summary><div class="mu" style="margin:4px 0">▼から選ぶか、直接入力します。入力した名前はそのまま出力され、次回から▼の選択肢にも残ります（学校ごとの呼び方でOK）。「体育」だけでも、一覧に「体育委員」があれば自動で補います。委員会も係もしていない学年は空欄でOKです。</div></details></div>
  <div id="dls">${DL_HTML()}</div>
  <div class="sec"><h3>① 特別活動の記録（学年ごとの委員会・係）</h3>${g}
- <div class="pvt" id="pv_tk">${esc(tkText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('tk')">この表記をコピー</button></div></div>
+ <div class="pvt" id="pv_tk">${esc(tkText(s)||NONE)}</div><div class="r"><button onclick="cpx('tk')">この表記をコピー</button></div></div>
  <div class="sec"><h3>② 部活動・地域クラブ活動 <span class="mu" style="font-weight:400">（先頭の「男子」「女子」は自動で外します）</span></h3>
  <div class="cl"><div><div class="hd">部活動</div><input list="dl_club" placeholder="部活動（選択／入力）" value="${esc(x.club)}" oninput="xs('club',this.value)" onchange="rem('club',this.value)"></div>
   <div><div class="hd">年数</div><select onchange="xs('yrs',this.value)">${['3','2','1'].map(v=>`<option value="${v}" ${x.yrs===v?'selected':''}>${v}年間</option>`).join('')}</select></div>
@@ -234,7 +236,7 @@ function naraCard(s){
  <div class="r"><button onclick="xcAdd()">＋ 検定を追加</button></div>
 </details>
  <div class="sec"><h3>⑤ スポーツ・文化活動等の記録（できあがり）</h3>
- <div class="pvt" id="pv_sp">${esc(spText(s))||'（選ぶとここに表示されます）'}</div><div class="r"><button onclick="cpx('sp')">この表記をコピー</button></div></div>
+ <div class="pvt" id="pv_sp">${esc(spText(s)||NONE)}</div><div class="r"><button onclick="cpx('sp')">この表記をコピー</button></div></div>
  ${mgr()}<details class="nt"><summary>注意書きを見る</summary><div class="mu">※ 主催者名は「〇〇市」のように具体的な地域名を書かず「市」と書く決まりです（大会欄に自分で入力する場合は注意してください）。検定の団体名・検定名は標準的な表記で入れています。県の記入上の注意と違う場合は、④の出力後に直してください。④の「奈良県」「クラス全項目」にもこの内容が入ります。</div></details></div>`}
 function DL_HTML(){return Object.keys(DL).map(id=>`<datalist id="${id}">${dlist(id).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
 /* ② */
@@ -669,7 +671,7 @@ function t3(){
  const rows=none?[]:c.students.map(s=>(nm===2?[s.no,s.name]:[s.no]).concat(sel.map(k=>val(s,k))));
  const pre=OPRE.find(q=>q[1].length===sel.length&&q[1].every(k=>sel.includes(k)));
  window._exAB=null;window._ex={head,rows,title:`${c.name} ${pre?pre[0]:'選んだ項目'}`};
- const fill=k=>c.students.filter(s=>val(s,k)).length,dis=none?'disabled':'';
+ const fill=k=>c.students.filter(s=>rawVal(s,k)).length,dis=none?'disabled':'';
  $('main').innerHTML=`
   <div class="c"><div class="r" style="margin:0"><b>クラス：</b><select onchange="S.cur=this.value;save();draw()">${S.classes.map(x=>`<option value="${x.id}" ${x.id===S.cur?'selected':''}>${esc(x.name)}</option>`).join('')}</select><span class="mu">${n}人</span></div></div>
   <div class="c"><h2>① 出す項目を選ぶ</h2>
